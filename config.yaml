@@ -1,0 +1,154 @@
+system:
+  app_name: "SupportLens"
+  version: "1.0.0"
+  random_seed: 42
+  total_students: 100
+  total_weeks: 12
+  default_as_of_week: 10
+
+thresholds:
+  attendance:
+    recent_weeks: 3
+    baseline_weeks: 3
+    low_att_cutoff: 75.0
+    critical_att_cutoff: 60.0
+    streak_weeks: 3
+    drop_from_baseline_cutoff: 20.0
+    sudden_drop_cutoff: 25.0
+  submission:
+    recent_weeks: 4
+    missing_count_cutoff: 2
+    missing_streak_cutoff: 2
+    late_rate_cutoff: 0.50
+    overall_submission_cutoff: 0.60
+  quiz:
+    recent_quizzes: 3
+    low_quiz_cutoff: 50.0
+    quiz_trend_cutoff: -5.0
+    quiz_below_threshold_count_cutoff: 2
+    quiz_participation_cutoff: 0.60
+    high_quiz_mitigation_cutoff: 80.0
+  recovery:
+    att_trend_recovery: 3.0
+    quiz_trend_recovery: 3.0
+  data_confidence:
+    high_threshold: 0.85
+    medium_threshold: 0.60
+    weights:
+      att_missing: 0.40
+      quiz_missing: 0.30
+      assignment_unknown: 0.30
+
+rules:
+  A1:
+    id: "A1"
+    category: "Attendance"
+    description: "Recent attendance below 75%"
+    points: 2
+  A2:
+    id: "A2"
+    category: "Attendance"
+    description: "Recent attendance critically low (below 60%)"
+    points: 2
+  A3:
+    id: "A3"
+    category: "Attendance"
+    description: "Consecutive attendance below 75% for 3+ weeks"
+    points: 2
+  A4:
+    id: "A4"
+    category: "Attendance"
+    description: "Attendance dropped by 20+ points from early baseline"
+    points: 2
+  S1:
+    id: "S1"
+    category: "Submission"
+    description: "2 or more assignments missing in the last 4 due weeks"
+    points: 2
+  S2:
+    id: "S2"
+    category: "Submission"
+    description: "Streak of 2 or more consecutive missed assignments"
+    points: 2
+  S3:
+    id: "S3"
+    category: "Submission"
+    description: "50% or more recent due assignments submitted late"
+    points: 1
+  S4:
+    id: "S4"
+    category: "Submission"
+    description: "Overall assignment submission rate under 60%"
+    points: 2
+  Q1:
+    id: "Q1"
+    category: "Assessment"
+    description: "Recent average quiz score below 50%"
+    points: 2
+  Q2:
+    id: "Q2"
+    category: "Assessment"
+    description: "Quiz scores declining by 5+ points per quiz"
+    points: 2
+  Q3:
+    id: "Q3"
+    category: "Assessment"
+    description: "2 or more quizzes below 50%"
+    points: 1
+  Q4:
+    id: "Q4"
+    category: "Assessment"
+    description: "Quiz participation rate under 60%"
+    points: 1
+  C1:
+    id: "C1"
+    category: "Compound"
+    description: "Attendance, Submission, and Assessment concerns all active"
+    points: 2
+  C2:
+    id: "C2"
+    category: "Compound"
+    description: "Sudden change: attendance 25+ points below baseline AND 2+ recent missing assignments"
+    points: 2
+
+mitigating_rules:
+  M1:
+    id: "M1"
+    category: "Mitigating"
+    description: "Strong quiz performance (>=80%) with no recent missing assignments"
+    points: -2
+  M2:
+    id: "M2"
+    category: "Mitigating"
+    description: "Positive recovery: attendance and quiz trends both up by >3 pts/week"
+    points: -2
+  M3:
+    id: "M3"
+    category: "Mitigating"
+    description: "Low data confidence: capped at Monitor; manual check recommended"
+    points: 0
+
+scoring_levels:
+  on_track:
+    label: "On Track"
+    badge_color: "green"
+    min_score: 0
+    max_score: 2
+  monitor:
+    label: "Monitor"
+    badge_color: "yellow"
+    min_score: 3
+    max_score: 4
+  suggest_outreach:
+    label: "Suggest Outreach"
+    badge_color: "orange"
+    min_score: 5
+    max_score: 7
+  priority_checkin:
+    label: "Priority Check-in"
+    badge_color: "red"
+    min_score: 8
+    max_score: 999
+  insufficient_data:
+    label: "Insufficient Data"
+    badge_color: "gray"

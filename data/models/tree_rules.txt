@@ -1,0 +1,16 @@
+|--- att_mean_overall <= -0.06
+|   |--- quiz_mean_overall <= 0.91
+|   |   |--- att_trend <= 1.35
+|   |   |   |--- class: 1
+|   |   |--- att_trend >  1.35
+|   |   |   |--- class: 0
+|   |--- quiz_mean_overall >  0.91
+|   |   |--- att_mean_recent <= -1.04
+|   |   |   |--- class: 0
+|   |   |--- att_mean_recent >  -1.04
+|   |   |   |--- class: 0
+|--- att_mean_overall >  -0.06
+|   |--- att_mean_overall <= -0.04
+|   |   |--- class: 0
+|   |--- att_mean_overall >  -0.04
+|   |   |--- class: 0

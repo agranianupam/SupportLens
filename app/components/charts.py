@@ -1,0 +1,71 @@
+from typing import Dict, Any, List, Optional
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
+COLOR_PALETTE = {'On Track': '#10B981', 'Monitor': '#F59E0B', 'Suggest Outreach': '#F97316', 'Priority Check-in': '#EF4444', 'Insufficient Data': '#9CA3AF', 'Submitted': '#10B981', 'Late': '#F59E0B', 'Missing': '#EF4444', 'Not Due': '#E5E7EB'}
+
+def create_student_attendance_chart(student_records: pd.DataFrame, as_of_week: int, threshold: float=75.0) -> go.Figure:
+    df = student_records[student_records['week'] <= as_of_week].copy()
+    fig = go.Figure()
+    fig.add_hline(y=threshold, line_dash='dash', line_color='#DC2626', annotation_text=f'Threshold ({threshold:.0f}%)', annotation_position='bottom right')
+    fig.add_trace(go.Scatter(x=df['week'], y=df['attendance_pct'], mode='lines+markers', name='Attendance %', line=dict(color='#2563EB', width=2.5), marker=dict(size=7, color='#1D4ED8'), connectgaps=False))
+    fig.update_layout(title='Weekly Attendance Trajectory', xaxis=dict(title='Week', tickmode='linear', tick0=1, dtick=1, range=[0.5, as_of_week + 0.5]), yaxis=dict(title='Attendance (%)', range=[0, 105]), margin=dict(l=40, r=20, t=40, b=40), height=260, template='plotly_white')
+    return fig
+
+def create_student_assignment_strip(student_records: pd.DataFrame, as_of_week: int) -> go.Figure:
+    df = student_records[student_records['week'] <= as_of_week].copy()
+    status_colors = {'Submitted': '#10B981', 'Late': '#F59E0B', 'Missing': '#EF4444', 'Not Due': '#94A3B8'}
+    colors = [status_colors.get(s, '#CBD5E1') for s in df['assignment_status']]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=df['week'], y=[1] * len(df), marker_color=colors, text=df['assignment_status'], textposition='inside', hoverinfo='x+text'))
+    fig.update_layout(title='Assignment Submissions by Week', xaxis=dict(title='Week', tickmode='linear', tick0=1, dtick=1, range=[0.5, as_of_week + 0.5]), yaxis=dict(visible=False), margin=dict(l=40, r=20, t=40, b=40), height=180, template='plotly_white')
+    return fig
+
+def create_student_quiz_chart(student_records: pd.DataFrame, as_of_week: int, threshold: float=50.0) -> go.Figure:
+    df = student_records[(student_records['week'] <= as_of_week) & (student_records['quiz_taken'] == True)].copy()
+    fig = go.Figure()
+    fig.add_hline(y=threshold, line_dash='dash', line_color='#DC2626', annotation_text=f'Check-in Threshold ({threshold:.0f}%)', annotation_position='bottom right')
+    if len(df) > 0:
+        fig.add_trace(go.Scatter(x=df['week'], y=df['quiz_score'], mode='lines+markers', name='Quiz Score', line=dict(color='#7C3AED', width=2.5), marker=dict(size=8, color='#6D28D9'), connectgaps=False))
+    fig.update_layout(title='Weekly Quiz Scores', xaxis=dict(title='Week', tickmode='linear', tick0=1, dtick=1, range=[0.5, as_of_week + 0.5]), yaxis=dict(title='Score (%)', range=[0, 105]), margin=dict(l=40, r=20, t=40, b=40), height=260, template='plotly_white')
+    return fig
+
+def create_cohort_level_donut(level_counts: Dict[str, int]) -> go.Figure:
+    labels = list(level_counts.keys())
+    values = list(level_counts.values())
+    colors = [COLOR_PALETTE.get(l, '#6B7280') for l in labels]
+    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.55, marker=dict(colors=colors), textinfo='label+value', hoverinfo='label+percent+value')])
+    fig.update_layout(title='Cohort Distribution by Support Level', margin=dict(l=20, r=20, t=40, b=20), height=300, showlegend=False, template='plotly_white')
+    return fig
+
+def create_cohort_weekly_trends(weekly_df: pd.DataFrame, as_of_week: int) -> go.Figure:
+    df = weekly_df[weekly_df['week'] <= as_of_week].copy()
+    att_avg = df.groupby('week')['attendance_pct'].mean()
+    quiz_avg = df[df['quiz_taken'] == True].groupby('week')['quiz_score'].mean()
+    due_weeks = df[df['assignment_status'].isin(['Submitted', 'Late', 'Missing'])]
+    sub_rate = due_weeks.groupby('week').apply(lambda g: g['assignment_status'].isin(['Submitted', 'Late']).mean() * 100)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=att_avg.index, y=att_avg.values, mode='lines+markers', name='Average Attendance %', line=dict(color='#2563EB', width=2.5)))
+    fig.add_trace(go.Scatter(x=quiz_avg.index, y=quiz_avg.values, mode='lines+markers', name='Average Quiz %', line=dict(color='#7C3AED', width=2.5)))
+    if len(sub_rate) > 0:
+        fig.add_trace(go.Scatter(x=sub_rate.index, y=sub_rate.values, mode='lines+markers', name='Assignment Submission %', line=dict(color='#059669', width=2.5, dash='dot')))
+    fig.update_layout(title='Cohort Engagement Averages Over Semester', xaxis=dict(title='Week', tickmode='linear', tick0=1, dtick=1, range=[0.5, as_of_week + 0.5]), yaxis=dict(title='Percentage (%)', range=[0, 105]), margin=dict(l=40, r=20, t=40, b=40), height=320, template='plotly_white', legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
+    return fig
+
+def create_subgroup_fairness_chart(subgroups: Dict[str, Dict[str, Any]], attribute_name: str) -> go.Figure:
+    groups = list(subgroups.keys())
+    flag_rates = [subgroups[g]['flag_rate_pct'] for g in groups]
+    recalls = [subgroups[g]['recall'] * 100 for g in groups]
+    fprs = [subgroups[g]['fpr'] * 100 for g in groups]
+    fig = go.Figure(data=[go.Bar(name='Flag Rate (%)', x=groups, y=flag_rates, marker_color='#3B82F6'), go.Bar(name='Recall / Sensitivity (%)', x=groups, y=recalls, marker_color='#10B981'), go.Bar(name='False Positive Rate (%)', x=groups, y=fprs, marker_color='#F59E0B')])
+    fig.update_layout(barmode='group', title=f'Subgroup Fairness Metrics ({attribute_name})', yaxis=dict(title='Rate (%)', range=[0, 100]), margin=dict(l=40, r=20, t=40, b=40), height=320, template='plotly_white')
+    return fig
+
+def create_missing_stress_chart(stress_df: pd.DataFrame) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['recall'] * 100, mode='lines+markers', name='Recall (%)', line=dict(color='#10B981', width=2.5)))
+    fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['precision'] * 100, mode='lines+markers', name='Precision (%)', line=dict(color='#3B82F6', width=2.5)))
+    fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['alert_burden_pct'], mode='lines+markers', name='Alert Burden (%)', line=dict(color='#F59E0B', width=2, dash='dash')))
+    fig.update_layout(title='Model & Rules Stability vs. Injected Missingness', xaxis=dict(title='Injected Data Missingness (%)', ticksuffix='%'), yaxis=dict(title='Performance (%)', range=[0, 105]), margin=dict(l=40, r=20, t=40, b=40), height=320, template='plotly_white', legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
+    return fig
