@@ -11,7 +11,7 @@ students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
 features_df, cohort_records = get_cohort_snapshot(as_of_week)
 store = get_review_store()
 st.sidebar.markdown('---')
-st.sidebar.markdown('🎯 **Presentation Demo Mode**')
+st.sidebar.markdown(' **Presentation Demo Mode**')
 demo_archetypes = {'Select a demo case...': None, 'Gradual Decliner (Falling Attendance)': 'gradual_decliner', 'Strong but Irregular (False Positive Trap)': 'strong_irregular', 'Sudden Dropper (Recent Change)': 'sudden_dropper', 'Recovering (Improved Engagement)': 'recovering', 'Data Gap Case (Sparse Records)': 'chronic_low'}
 demo_choice = st.sidebar.selectbox('Jump to Archetype Case', list(demo_archetypes.keys()))
 selected_id = None
@@ -137,14 +137,162 @@ with h_tab1:
         st.table(pd.DataFrame(hist['reviews'])[['reviewed_at', 'reviewer_code', 'decision', 'corrected_level', 'reason_code', 'reason_note']])
     else:
         st.caption('No reviews logged yet for this student.')
+
 with h_tab2:
     if hist['actions']:
-        st.table(pd.DataFrame(hist['actions'])[['created_at', 'created_by', 'action_type', 'planned_date', 'status', 'action_note']])
-    else:
-        st.caption('No follow-up actions recorded yet for this student.')
+        st.markdown("#### Follow-up Action Tracker")
+        st.caption(
+            "Track supportive actions and update their progress. "
+            "Every status change is recorded in the audit log."
+        )
+
+        actions_df = pd.DataFrame(hist['actions'])
+        st.dataframe(
+            actions_df[
+                [
+                    'action_id',
+                    'created_at',
+                    'action_type',
+                    'planned_date',
+                    'status',
+                    'action_note',
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+st.markdown("#### Update an Existing Action")
+
+action_ids = [int(a['action_id']) for a in hist['actions']]
+selected_action_id = st.selectbox(
+            "Select action to update",
+            options=action_ids,
+            format_func=lambda aid: next(
+                f"#{aid} — {a['action_type']} ({a['status']})"
+                for a in hist['actions']
+                if int(a['action_id']) == aid
+            ),
+            key="followup_action_id",
+        )
+
+selected_record = next(
+            a for a in hist['actions']
+            if int(a['action_id']) == selected_action_id
+        )
+
+valid_statuses = [
+            'Planned',
+            'Done',
+            'Declined by student',
+            'No longer needed',
+        ]
+
+with st.form("update_followup_status_form"):
+            new_status = st.selectbox(
+                "New follow-up status",
+                options=valid_statuses,
+                index=valid_statuses.index(selected_record['status'])
+                if selected_record['status'] in valid_statuses else 0,
+            )
+
+            update_submitted = st.form_submit_button(
+                "Save Follow-up Status"
+            )
+
+            if update_submitted:
+                try:
+                    if new_status == selected_record['status']:
+                        st.info("This action already has that status.")
+                    else:
+                        store.update_action_status(
+                            action_id=selected_action_id,
+                            new_status=new_status,
+                            actor_code="STAFF-01",
+                        )
+                        st.success(
+                            f"Action #{selected_action_id} updated to "
+                            f"'{new_status}'. The change was recorded."
+                        )
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Could not update action: {e}")
+            else:
+                st.caption(
+            "No follow-up actions recorded yet for this student. "
+            "Record an action in the Staff Review panel first."
+        )
+st.markdown("#### Follow-up Effectiveness")
+
+completed_actions = [
+                action
+                for action in hist["actions"]
+                if action["status"] == "Done"
+            ]
+
+if completed_actions:
+                action_options = {
+                    f"Action #{action['action_id']} — {action['action_type']}": action
+                    for action in completed_actions
+                }
+
+                selected_label = st.selectbox(
+                    "Select a completed action",
+                    list(action_options.keys()),
+                    key="feedback_action_select",
+                )
+
+                selected_action = action_options[selected_label]
+                existing_feedback = store.get_action_feedback(
+                    selected_action["action_id"]
+                )
+
+                if existing_feedback:
+                    st.caption(
+                        f"Current outcome: {existing_feedback['outcome']}"
+                    )
+
+                with st.form("action_feedback_form"):
+                    outcome = st.selectbox(
+                        "How effective was this follow-up?",
+                        ["Helpful", "Partially helpful", "Not helpful"],
+                    )
+
+                    staff_note = st.text_area(
+                        "Staff note (optional)",
+                        placeholder="Record any observed outcome...",
+                    )
+
+                    submitted = st.form_submit_button("Save Feedback")
+
+                    if submitted:
+                        try:
+                            store.record_action_feedback(
+                                action_id=selected_action["action_id"],
+                                outcome=outcome,
+                                staff_note=staff_note,
+                                recorded_by="STAFF-01",
+                            )
+                            st.success("Follow-up feedback saved.")
+                            st.rerun()
+                        except Exception as exc:
+                            st.error(f"Could not save feedback: {exc}")
+
+                if existing_feedback:
+                    st.caption(
+                        f"Last recorded by: {existing_feedback['recorded_by']}"
+                    )
+                    if existing_feedback["staff_note"]:
+                        st.write(existing_feedback["staff_note"])
+
+                else:
+                   st.info(
+                    "Mark a follow-up action as Done before recording its effectiveness."
+                )
+
 with h_tab3:
-    if hist['flags']:
-        st.table(pd.DataFrame(hist['flags'])[['as_of_week', 'support_level', 'score', 'categories', 'created_at']])
-    else:
-        st.caption('No historical flags recorded.')
-render_footer()
+        if hist['flags']:
+            st.table(pd.DataFrame(hist['flags'])[['as_of_week', 'support_level', 'score', 'categories', 'created_at']])
+        else:
+            st.caption('No historical flags recorded.')
+        render_footer()

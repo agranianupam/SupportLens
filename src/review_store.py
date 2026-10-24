@@ -29,6 +29,18 @@ class ReviewStore:
             cursor.execute('\n            CREATE TABLE IF NOT EXISTS reviews (\n                review_id INTEGER PRIMARY KEY AUTOINCREMENT,\n                flag_id INTEGER NOT NULL,\n                student_id TEXT NOT NULL,\n                reviewer_code TEXT NOT NULL,\n                decision TEXT NOT NULL,\n                corrected_level TEXT,\n                reason_code TEXT,\n                reason_note TEXT,\n                reviewed_at TEXT NOT NULL,\n                FOREIGN KEY(flag_id) REFERENCES flags(flag_id)\n            )\n            ')
             cursor.execute('\n            CREATE TABLE IF NOT EXISTS actions (\n                action_id INTEGER PRIMARY KEY AUTOINCREMENT,\n                flag_id INTEGER,\n                student_id TEXT NOT NULL,\n                action_type TEXT NOT NULL,\n                action_note TEXT,\n                planned_date TEXT,\n                status TEXT NOT NULL,\n                created_by TEXT NOT NULL,\n                created_at TEXT NOT NULL\n            )\n            ')
             cursor.execute('\n            CREATE TABLE IF NOT EXISTS audit_log (\n                log_id INTEGER PRIMARY KEY AUTOINCREMENT,\n                timestamp TEXT NOT NULL,\n                actor_code TEXT NOT NULL,\n                event_type TEXT NOT NULL,\n                student_id TEXT NOT NULL,\n                flag_id INTEGER,\n                details_json TEXT NOT NULL\n            )\n            ')
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS action_feedback (
+                feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action_id INTEGER NOT NULL UNIQUE,
+                student_id TEXT NOT NULL,
+                outcome TEXT NOT NULL,
+                staff_note TEXT,
+                recorded_by TEXT NOT NULL,
+                recorded_at TEXT NOT NULL,
+                FOREIGN KEY(action_id) REFERENCES actions(action_id)
+            )
+            ''')
             conn.commit()
 
     def log_audit_event(self, actor_code: str, event_type: str, student_id: str, flag_id: Optional[int], details: Dict[str, Any]):
@@ -167,3 +179,86 @@ class ReviewStore:
             if dismissal_reasons.get('Strong performance elsewhere', 0) >= 3:
                 recommendations.append("Frequent dismissals for 'Strong performance elsewhere': consider strengthening Mitigating Rule M1 threshold.")
         return {'total_reviews': total_reviews, 'decision_breakdown': decision_counts, 'dismissal_reasons': dismissal_reasons, 'system_tuning_recommendations': recommendations}
+
+    def record_action_feedback(
+    self,
+    action_id: int,
+    outcome: str,
+    staff_note: str = "",
+    recorded_by: str = "STAFF-01",
+    ):
+        valid_outcomes = {
+            "Helpful",
+            "Partially helpful",
+            "Not helpful",
+        }
+
+        if outcome not in valid_outcomes:
+            raise ValueError(f"Invalid feedback outcome: {outcome}")
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "SELECT student_id, status FROM actions WHERE action_id = ?",
+                (action_id,),
+            )
+            action = cursor.fetchone()
+
+            if action is None:
+                raise ValueError("Follow-up action not found.")
+
+            if action["status"] != "Done":
+                raise ValueError(
+                    "Feedback can only be recorded for completed actions."
+                )
+
+            cursor.execute(
+                """
+                INSERT INTO action_feedback (
+                    action_id, student_id, outcome, staff_note,
+                    recorded_by, recorded_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(action_id) DO UPDATE SET
+                    outcome = excluded.outcome,
+                    staff_note = excluded.staff_note,
+                    recorded_by = excluded.recorded_by,
+                    recorded_at = excluded.recorded_at
+                """,
+                (
+                    action_id,
+                    action["student_id"],
+                    outcome,
+                    staff_note.strip(),
+                    recorded_by,
+                    datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                ),
+            )
+            conn.commit()
+
+            self.log_audit_event(
+            actor_code=recorded_by,
+            event_type="ACTION_FEEDBACK_RECORDED",
+            student_id=action["student_id"],
+            flag_id=None,
+            details={
+                "action_id": action_id,
+                "outcome": outcome,
+            },
+        )
+
+    def get_action_feedback(self, action_id: int):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT *
+                FROM action_feedback
+                WHERE action_id = ?
+                """,
+                (action_id,),
+            )
+            row = cursor.fetchone()
+
+        return dict(row) if row else None
