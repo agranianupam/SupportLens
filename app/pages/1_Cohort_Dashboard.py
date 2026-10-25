@@ -71,12 +71,55 @@ else:
 
 st.markdown('---')
 st.markdown('### 📥 Export Anonymised Cohort Artifacts')
-ex_col1, ex_col2 = st.columns(2)
+st.caption('All exported files contain strictly synthetic anonymised identifiers. Group attributes and coordinator free-text notes are omitted to preserve student privacy.')
+
+from src.export import generate_weekly_summary_csv, generate_weekly_support_summary_pdf, generate_cohort_report_markdown
+
+kpi_dict = {
+    'total_students': len(cohort_records),
+    'on_track_count': sum(1 for r in cohort_records if r['display_level'] == 'On Track'),
+    'on_track_pct': round(sum(1 for r in cohort_records if r['display_level'] == 'On Track') / len(cohort_records) * 100, 1),
+    'monitor_count': sum(1 for r in cohort_records if r['display_level'] == 'Monitor'),
+    'monitor_pct': round(sum(1 for r in cohort_records if r['display_level'] == 'Monitor') / len(cohort_records) * 100, 1),
+    'suggest_outreach_count': sum(1 for r in cohort_records if r['display_level'] == 'Suggest Outreach'),
+    'suggest_outreach_pct': round(sum(1 for r in cohort_records if r['display_level'] == 'Suggest Outreach') / len(cohort_records) * 100, 1),
+    'priority_checkin_count': sum(1 for r in cohort_records if r['display_level'] == 'Priority Check-in'),
+    'priority_checkin_pct': round(sum(1 for r in cohort_records if r['display_level'] == 'Priority Check-in') / len(cohort_records) * 100, 1),
+    'insufficient_data_count': sum(1 for r in cohort_records if r['display_level'] == 'Insufficient Data'),
+}
+
+review_analytics = store.get_review_analytics()
+csv_data = generate_weekly_summary_csv(filtered_records)
+pdf_data = generate_weekly_support_summary_pdf(as_of_week, kpi_dict, filtered_records, review_analytics, eff)
+
+ex_col1, ex_col2, ex_col3 = st.columns(3)
 with ex_col1:
-    csv_data = generate_weekly_summary_csv(filtered_records)
-    st.download_button(label='📄 Download Anonymised Weekly Summary (CSV)', data=csv_data, file_name=f'supportlens_cohort_week_{as_of_week}.csv', mime='text/csv', use_container_width=True)
+    if st.download_button(
+        label='📄 Download Weekly Summary (CSV)',
+        data=csv_data,
+        file_name=f'supportlens_cohort_week_{as_of_week}.csv',
+        mime='text/csv',
+        use_container_width=True,
+    ):
+        store.record_export('WEEKLY_SUMMARY_CSV', actor_code='STAFF-01', details={'as_of_week': as_of_week, 'count': len(filtered_records)})
 with ex_col2:
-    kpi_dict = {'total_students': len(cohort_records), 'on_track_count': sum((1 for r in cohort_records if r['display_level'] == 'On Track')), 'on_track_pct': round(sum((1 for r in cohort_records if r['display_level'] == 'On Track')) / len(cohort_records) * 100, 1), 'monitor_count': sum((1 for r in cohort_records if r['display_level'] == 'Monitor')), 'monitor_pct': round(sum((1 for r in cohort_records if r['display_level'] == 'Monitor')) / len(cohort_records) * 100, 1), 'suggest_outreach_count': sum((1 for r in cohort_records if r['display_level'] == 'Suggest Outreach')), 'suggest_outreach_pct': round(sum((1 for r in cohort_records if r['display_level'] == 'Suggest Outreach')) / len(cohort_records) * 100, 1), 'priority_checkin_count': sum((1 for r in cohort_records if r['display_level'] == 'Priority Check-in')), 'priority_checkin_pct': round(sum((1 for r in cohort_records if r['display_level'] == 'Priority Check-in')) / len(cohort_records) * 100, 1), 'insufficient_data_count': sum((1 for r in cohort_records if r['display_level'] == 'Insufficient Data'))}
+    if st.download_button(
+        label='📑 Download Support Summary (PDF)',
+        data=pdf_data,
+        file_name=f'supportlens_summary_week_{as_of_week}.pdf',
+        mime='application/pdf',
+        use_container_width=True,
+    ):
+        store.record_export('WEEKLY_SUPPORT_SUMMARY_PDF', actor_code='STAFF-01', details={'as_of_week': as_of_week, 'pages': 3})
+with ex_col3:
     md_report = generate_cohort_report_markdown(as_of_week, kpi_dict, filtered_records)
-    st.download_button(label='📑 Download Coordinator Summary Report (Markdown)', data=md_report, file_name=f'supportlens_report_week_{as_of_week}.md', mime='text/markdown', use_container_width=True)
+    if st.download_button(
+        label='📝 Download Summary (Markdown)',
+        data=md_report,
+        file_name=f'supportlens_report_week_{as_of_week}.md',
+        mime='text/markdown',
+        use_container_width=True,
+    ):
+        store.record_export('WEEKLY_SUMMARY_MD', actor_code='STAFF-01', details={'as_of_week': as_of_week})
+
 render_footer()

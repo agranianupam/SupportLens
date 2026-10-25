@@ -26,8 +26,15 @@ if raw_logs:
         display_rows.append({'Log ID': l['log_id'], 'Timestamp (UTC)': l['timestamp'][:19].replace('T', ' '), 'Actor Code': l['actor_code'], 'Event Type': l['event_type'], 'Student ID': l['student_id'], 'Flag ID': l['flag_id'] if l['flag_id'] else '-', 'Event Details': details_summary})
     df_logs = pd.DataFrame(display_rows)
     st.dataframe(df_logs, use_container_width=True)
-    csv_bytes = df_logs.to_csv(index=False).encode('utf-8')
-    st.download_button(label='📥 Download Audit Log as CSV', data=csv_bytes, file_name='supportlens_audit_log.csv', mime='text/csv')
+    from src.export import generate_audit_log_csv
+    audit_csv = generate_audit_log_csv(raw_logs)
+    if st.download_button(
+        label='📥 Download Audit Log as CSV',
+        data=audit_csv,
+        file_name='supportlens_audit_log.csv',
+        mime='text/csv',
+    ):
+        store.record_export('AUDIT_LOG_CSV', actor_code='STAFF-01', details={'record_count': len(raw_logs)})
 else:
     st.info('No audit logs matching current filter.')
 st.markdown('---')

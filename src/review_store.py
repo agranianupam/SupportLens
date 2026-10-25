@@ -50,6 +50,15 @@ class ReviewStore:
             cursor.execute('\n                INSERT INTO audit_log (timestamp, actor_code, event_type, student_id, flag_id, details_json)\n                VALUES (?, ?, ?, ?, ?, ?)\n                ', (timestamp, actor_code, event_type, student_id, flag_id, json.dumps(details)))
             conn.commit()
 
+    def record_export(self, file_type: str, actor_code: str = 'STAFF-01', details: Optional[Dict[str, Any]] = None):
+        self.log_audit_event(
+            actor_code=actor_code,
+            event_type='EXPORT',
+            student_id='COHORT',
+            flag_id=None,
+            details={'file_type': file_type, **(details or {})}
+        )
+
     def save_flag(self, flag_result: Dict[str, Any]) -> int:
         student_id = flag_result['student_id']
         as_of_week = flag_result['as_of_week']

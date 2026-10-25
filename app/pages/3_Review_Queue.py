@@ -187,6 +187,17 @@ with tab_analytics:
                 st.warning(f"🔧 {sug}")
         else:
             st.success(f"All evaluated rules remain below the {int(dismissal_thresh * 100)}% dismissal alert threshold (min {min_revs} reviews).")
+            
+        st.markdown('---')
+        from src.export import generate_review_analytics_csv
+        analytics_csv = generate_review_analytics_csv(analytics)
+        if st.download_button(
+            label='📥 Export Review Analytics as CSV',
+            data=analytics_csv,
+            file_name='supportlens_review_analytics.csv',
+            mime='text/csv',
+        ):
+            store.record_export('REVIEW_ANALYTICS_CSV', actor_code='STAFF-01', details={'total_reviews': analytics['total_reviews']})
     else:
         st.info('No staff reviews recorded yet. Triage flagged students to generate feedback analytics.')
 
