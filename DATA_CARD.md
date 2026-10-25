@@ -1,7 +1,7 @@
 # SupportLens Dataset Card
 
 ## 1. Overview and Intended Use
-SupportLens is a prototype academic early-warning and supportive outreach system designed for course coordinators. 
+SupportLens is an academic early-warning and supportive decision-support prototype created for university course coordinators.
 The accompanying dataset is **100% synthetic**, designed strictly for demonstration, evaluation, and algorithmic auditing.
 
 - **Primary Purpose:** Enable staff to identify students experiencing academic difficulty early in a semester so compassionate, supportive check-ins can be initiated.
@@ -48,23 +48,24 @@ One record per student per week (Weeks 1 to 12).
 | `student_id` | String | References `students.csv`. |
 | `archetype` | String | Latent archetype driving generation (hidden from predictive algorithms). |
 | `needs_support` | Binary (0/1) | Synthetic ground truth flag used strictly for model evaluation and test comparisons. |
+| `decline_start_week` | Float / Null | Exact simulated week when student engagement began to decline. Ground-truth evaluation use only. |
 
 ---
 
-## 4. Latent Student Archetypes
+## 4. Latent Student Archetypes & Distribution Shares
 To ensure realistic behavioral trajectories while keeping individual records synthetic, data is simulated using seven behavioral archetypes:
 
-1. **Steady Performer (50%):** Consistently high attendance (88-98%), timely submissions, quiz averages 75-90%.
-2. **Average / Variable (20%):** Moderate attendance (75-90%), occasional late submissions, quiz averages 60-75%.
-3. **Gradual Decliner (10%):** Strong start with noticeable downward drift in attendance and quiz scores starting weeks 4-6.
-4. **Chronic Low Engagement (8%):** Low baseline attendance (40-65%), frequent missing assignments, depressed quiz scores.
-5. **Sudden Dropper (5%):** Normal engagement until weeks 7-8, followed by a precipitous drop in attendance and missed deliverables.
-6. **Strong but Irregular (4%):** Low attendance due to independent study or conflicting schedules, but excellent quiz performance and on-time submissions. (*Serves as an essential false-positive test case*).
-7. **Recovering (3%):** Disengaged early in the term, followed by marked improvement from week 5 onwards. (*Serves as a test case against over-flagging recovered students*).
+1. **Steady Performer (~50%):** Consistently high attendance (88-98%), timely submissions, quiz averages 75-90%.
+2. **Average / Variable (~20%):** Moderate attendance (75-90%), occasional late submissions, quiz averages 60-75%.
+3. **Gradual Decliner (~10%):** Strong start with noticeable downward drift in attendance and quiz scores starting weeks 4-6. (Decline start recorded for earliness auditing).
+4. **Chronic Low Engagement (~8%):** Low baseline attendance (40-65%), frequent missing assignments, depressed quiz scores.
+5. **Sudden Dropper (~5%):** Normal engagement until weeks 7-8, followed by a precipitous drop in attendance and missed deliverables.
+6. **Strong but Irregular (~4%):** Low attendance due to independent study or conflicting schedules, but excellent quiz performance and on-time submissions. (*Serves as an essential false-positive test case for Rule M1*).
+7. **Recovering (~3%):** Disengaged early in the term, followed by marked improvement from week 5 onwards. (*Serves as a test case against over-flagging recovered students for Rule M2*).
 
 ---
 
-## 5. Realistic Data Messiness & Injected Anomalies
+## 5. Realistic Data Messiness & Injected Noise
 Real educational data is imperfect. The synthetic generator explicitly injects:
 - **~5% missing attendance records** across the semester.
 - **~8% unrecorded quiz scores** in weeks where quizzes took place.
@@ -74,7 +75,14 @@ Real educational data is imperfect. The synthetic generator explicitly injects:
 
 ---
 
-## 6. Reproducibility
+## 6. What This Data Cannot Represent
+- **Lived Experience:** Synthetic numbers do not reflect health, mental wellbeing, personal grief, employment shifts, or housing insecurity.
+- **Causality:** The data records engagement signals, not the underlying root causes.
+- **Classroom Dynamics:** Group work dynamics, peer interactions, and lecture pedagogy are not modeled.
+
+---
+
+## 7. Reproducibility
 The dataset can be deterministically reproduced using:
 ```bash
 python -m src.data_generator --seed 42 --output_dir data
