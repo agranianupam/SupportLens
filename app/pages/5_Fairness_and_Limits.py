@@ -22,8 +22,8 @@ st.markdown('SupportLens is built around responsible AI design principles. This 
 students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
 features_df, cohort_records = get_cohort_snapshot(10)
 st.markdown('### 1. Subgroup Fairness Audit (Synthetic Non-Sensitive Groups)')
-st.markdown('> **Crucial Ethical Guardrail:** Demographic attributes (`study_mode`, `cohort_group`) are **strictly barred from model features**. They are retained solely to audit performance across subgroups.')
-audit_attr = st.radio('Select Subgroup Attribute for Audit', options=['study_mode', 'cohort_group'], format_func=lambda x: 'Study Mode (Full-time vs. Part-time)' if x == 'study_mode' else 'Cohort Section (A, B, C)', horizontal=True)
+st.markdown('> **Crucial Ethical Guardrail:** Group attributes (`cohort_group`, `prior_support_flag`) are **strictly barred from model features**. They are retained solely to audit performance across subgroups.')
+audit_attr = st.radio('Select Subgroup Attribute for Audit', options=['cohort_group', 'prior_support_flag'], format_func=lambda x: 'Cohort Section (Sections A, B, C)' if x == 'cohort_group' else 'Prior Academic Support Record', horizontal=True)
 audit_res = audit_subgroup_fairness(features_df=features_df, students_df=students_df, labels_df=ground_truth, flag_results=cohort_records, attribute_col=audit_attr)
 f_col1, f_col2, f_col3 = st.columns(3)
 f_col1.metric('Demographic Parity Gap', f"{audit_res['demographic_parity_gap_pct']}%", 'Tolerance: < 10%')
@@ -33,11 +33,13 @@ fig_fairness = create_subgroup_fairness_chart(audit_res['subgroups'], audit_attr
 st.plotly_chart(fig_fairness, use_container_width=True)
 sub_rows = []
 for grp, m in audit_res['subgroups'].items():
-    sub_rows.append({'Subgroup': grp, 'Student Count': m['count'], 'Flagged Count': m['flag_count'], 'Flag Rate (%)': f"{m['flag_rate_pct']:.1f}%", 'Recall / Sensitivity': f"{m['recall']:.1%}", 'False Positive Rate': f"{m['fpr']:.1%}", 'Precision': f"{m['precision']:.3f}", 'F1 Score': f"{m['f1']:.3f}"})
-st.info(f"""#### 💡 Case Study: The Part-Time Student Disparity & Our Mitigation
-- **The Latent Challenge:** Part-time students often juggle employment or family caregiving, resulting in a naturally lower physical attendance profile while achieving comparable quiz mastery and assignment submission rates.
-- **The Naïve Risk:** A simplistic 'Attendance < 75%' rule would unfairly over-flag part-time students, creating an observed baseline disparity of {audit_res['demographic_parity_gap_pct']:.1f} percentage points.
-- **SupportLens Mitigation:** Through **Mitigating Rule M1** (strong quiz performance offsets attendance penalties) and requiring multi-signal convergence, SupportLens successfully dampens unwarranted alerts, bringing parity metrics within the fair target window (<10%).""")
+    grp_label = ("Prior Support" if str(grp).lower() in ['true', '1'] else "First-Time Cohort") if audit_attr == 'prior_support_flag' else str(grp)
+    sub_rows.append({'Subgroup': grp_label, 'Student Count': m['count'], 'Flagged Count': m['flag_count'], 'Flag Rate (%)': f"{m['flag_rate_pct']:.1f}%", 'Recall / Sensitivity': f"{m['recall']:.1%}", 'False Positive Rate': f"{m['fpr']:.1%}", 'Precision': f"{m['precision']:.3f}", 'F1 Score': f"{m['f1']:.3f}"})
+st.dataframe(pd.DataFrame(sub_rows), use_container_width=True, hide_index=True)
+st.info(f"""#### 💡 Case Study: Cohort Section Parity & Mitigating Rule Dampening
+- **The Operational Challenge:** Course sections (A, B, and C) naturally vary in meeting times, laboratory schedules, and instructor pacing. A rigid or single-signal early-warning rule risks generating artificial disparities across lecture sections.
+- **The Naïve Risk:** A simplistic 'Attendance < 75% alone' rule produces a wide flag-rate disparity across sections, disproportionately alarming students whose attendance was affected by schedule conflicts despite strong quiz performance.
+- **SupportLens Mitigation:** Through **Mitigating Rule M1** (strong quiz mastery offsets raw attendance drops) and **Rule M2** (rewarding positive multi-week trajectories), SupportLens protects autonomous learners and maintains balanced parity across all course sections.""")
 st.markdown('### 2. Missing-Data Stress Testing & Resilience')
 st.markdown('To test resilience under deteriorating data recording environments, we simulate escalating levels of injected synthetic missingness (5%, 10%, 20%, 30%) across multiple random seeds:')
 

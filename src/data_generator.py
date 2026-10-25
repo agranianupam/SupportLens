@@ -18,7 +18,7 @@ def generate_synthetic_data(seed: int=42, output_dir: str='data'):
         archetype_list.extend([arch_name] * config['count'])
     np.random.shuffle(archetype_list)
     cohort_groups = np.random.choice(['Section A', 'Section B', 'Section C'], size=total_students, p=[0.4, 0.35, 0.25])
-    study_modes = np.random.choice(['Full-time', 'Part-time'], size=total_students, p=[0.75, 0.25])
+    study_modes = ['Full-time'] * total_students
     prior_support = np.random.choice([False, True], size=total_students, p=[0.85, 0.15])
     students_df = pd.DataFrame({'student_id': student_ids, 'archetype': archetype_list, 'cohort_group': cohort_groups, 'study_mode': study_modes, 'prior_support_flag': prior_support})
     students_df.to_csv(out_path / 'students.csv', index=False)
@@ -57,11 +57,8 @@ def generate_synthetic_data(seed: int=42, output_dir: str='data'):
         s_id = s_row['student_id']
         arch = s_row['archetype']
         cfg = ARCHETYPES[arch]
-        is_part_time = s_row['study_mode'] == 'Part-time'
         for w in weeks:
             base_att = cfg['att_mean']
-            if is_part_time:
-                base_att -= 8.0
             if arch == 'gradual_decliner':
                 if w >= cfg['decline_start']:
                     base_att += (w - cfg['decline_start'] + 1) * cfg['decline_rate_att']

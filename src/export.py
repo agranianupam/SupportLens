@@ -47,7 +47,7 @@ def generate_weekly_summary_csv(cohort_records: List[Dict[str, Any]]) -> str:
 
 def generate_audit_log_csv(audit_records: List[Dict[str, Any]]) -> str:
     """
-    Generate CSV export of append-only audit log.
+    Generate CSV export of append-only audit log in Asia/Kolkata (IST).
     """
     from src.review_store import format_to_ist
     clean_rows = []
@@ -55,6 +55,7 @@ def generate_audit_log_csv(audit_records: List[Dict[str, Any]]) -> str:
         clean_rows.append({
             'log_id': log.get('log_id'),
             'timestamp': format_to_ist(log.get('timestamp')),
+            'timezone': 'IST (Asia/Kolkata)',
             'actor_code': log.get('actor_code'),
             'event_type': log.get('event_type'),
             'student_id': log.get('student_id'),

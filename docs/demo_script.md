@@ -90,11 +90,11 @@ This script is structured for an exact 5-minute live competition demonstration t
 
 ### 7. Subgroup Fairness & Missing-Data Stress Test (5:00 - 5:30 | 30s)
 - **Screen:** `app/pages/5_Fairness_and_Limits.py`
-- **Actions:** Point to Full-time vs Part-time comparison and Missing Data Stress Test chart.
+- **Actions:** Point to Cohort Section comparison and Missing Data Stress Test chart.
 - **Spoken:**
-  > *"Finally, on Fairness & Limits: Demographic attributes (`study_mode`, `cohort_group`) are strictly segregated from ML features and evaluated only here.*
+  > *"Finally, on Fairness & Limits: Group attributes (`cohort_group`, `prior_support_flag`) are strictly segregated from ML features and evaluated only here.*
   >
-  > *We discovered that part-time students naturally register lower attendance due to jobs. A naive rule produces a 25.8% disparity gap. SupportLens's mitigating rules cut this gap down to 13.0%!*
+  > *We verify that SupportLens preserves parity across lecture sections and prior support history. A naive attendance-only rule produces substantial section-level disparity, while SupportLens's mitigating rules preserve equitable support!*
   >
   > *And in our **Missing-Data Stress Test**, as missingness increases from 5% to 30%, the system never invents phantom alerts; it gracefully expands the Insufficient Data share and safely abstains.*
   >

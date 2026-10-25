@@ -108,7 +108,7 @@ The dashboard is structured into 7 dedicated workflow pages accessible via the s
 5. **`4_Evaluation.py` (Evaluation Integrity & Ablation):**  
    Multi-seed evaluation table (mean $\pm$ std across 5 seeds), box plots, baseline comparisons, earliness analysis histogram (Weeks to detection before drop), 6-configuration ablation study, archetype error analysis, and threshold sensitivity curves.
 6. **`5_Fairness_and_Limits.py` (Subgroup Fairness & Missing-Data Stress Test):**  
-   Post-hoc fairness audits across `study_mode` (Full-Time vs. Part-Time) and `cohort_group` (Sections A, B, C), live Demographic Parity and Equal Opportunity gap calculations, and missing-data stress test curves (5% to 30% added missingness).
+   Post-hoc fairness audits across `cohort_group` (Sections A, B, C) and prior academic support history, live Demographic Parity and Equal Opportunity gap calculations, and missing-data stress test curves (5% to 30% added missingness).
 7. **`6_Feature_Glossary.py` (Feature & Rule Dictionary):**  
    Transparent reference manual documenting every engineered feature, rule threshold, point weight, and ethical design principle.
 8. **`7_Audit_Log.py` (Immutable Accountability Register):**  
@@ -124,7 +124,7 @@ SupportLens was engineered in strict adherence to foundational responsible AI pr
 |---|---|
 | **100% Synthetic Data** | Only synthetic records are used; anonymized IDs (`S-0001`..`S-0100`). No real student identifiers, emails, or phone numbers. |
 | **Supportive, Never Punitive** | Automated disciplinary actions, academic penalties, grading deductions, and enrollment holds are strictly prohibited and technically blocked. |
-| **Protected Demographic Separation** | Group attributes (`cohort_group`, `study_mode`, `prior_support_flag`) are strictly barred from ML feature engineering; used only in post-hoc fairness audits. |
+| **Protected Demographic Separation** | Group attributes (`cohort_group`, `prior_support_flag`) are strictly barred from ML feature engineering; used only in post-hoc fairness audits. |
 | **"Missing is Never Zero"** | Missing records are never imputed as zero. The system averages over observed records only and abstains (`Insufficient Data`) when records are sparse. |
 | **Multi-Week Persistence Filter** | Single-week drops are capped at `Monitor` ("Watching: single-week signal"); escalation requires concern in $\ge 2$ of the last 3 weekly snapshots. |
 | **Mandatory Human-in-the-Loop** | Coordinator decisions always supersede automated system levels across all dashboards and reports. |

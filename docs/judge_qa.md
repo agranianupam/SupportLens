@@ -55,7 +55,7 @@ Because high-stakes educational decisions require **interpretability and trust**
 
 ### Q6: "What fairness disparities did your audit uncover, and how did you mitigate them?"
 **Answer:**  
-During subgroup audits across `study_mode`, we discovered that **part-time students naturally exhibit lower physical attendance** because they balance off-campus employment and caregiving, despite demonstrating equal quiz scores and submission rates.
-- Under a naive attendance threshold ($<75\%$), part-time students suffered a **25.8 percentage point flag-rate disparity**.
-- SupportLens mitigating rules (M1 mastery and M2 trajectory) successfully cut this demographic parity gap down to **13.0%** (a 12.8 point reduction).
-- Group attributes are strictly barred from ML training and feature engineering to ensure algorithms operate purely on behavioral engagement telemetry.
+During subgroup audits across cohort lecture sections (`cohort_group`), we discovered that **single-signal rules create substantial parity disparities across sections** because different sections encounter varying laboratory schedules and session timing, despite demonstrating comparable quiz scores and submission rates.
+- Under a naive attendance threshold ($<75\%$), lecture sections exhibited a substantial flag-rate disparity gap.
+- SupportLens mitigating rules (M1 mastery and M2 trajectory) successfully preserve section parity by ensuring high quiz performance and upward multi-week momentum offset raw attendance dips.
+- Group attributes (`cohort_group`, `prior_support_flag`) are strictly barred from ML training and feature engineering to ensure algorithms operate purely on behavioral engagement telemetry.

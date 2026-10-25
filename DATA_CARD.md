@@ -16,7 +16,7 @@ The accompanying dataset is **100% synthetic**, designed strictly for demonstrat
 > **Strict Privacy Guarantee:** No real student data, names, emails, phone numbers, addresses, institutional IDs, IP addresses, gender, ethnicity, or real-world demographic records were used or generated.
 
 - All student identifiers follow a randomly shuffled synthetic format (`S-0001` to `S-0100`).
-- Any categorical groupings (`cohort_group`: Section A, Section B, Section C; `study_mode`: Full-time, Part-time) are synthetic attributes provided exclusively for fairness auditing and subgroup sensitivity testing.
+- Any categorical groupings (`cohort_group`: Section A, Section B, Section C; `prior_support_flag`) are synthetic attributes provided exclusively for fairness auditing and subgroup sensitivity testing. The cohort consists exclusively of full-time students.
 - The `ground_truth_support_need` labels exist purely for offline evaluation and algorithmic verification. In a real deployment, no such oracle labels exist; coordinator review decisions provide the human-in-the-loop feedback signal.
 
 ---
@@ -28,7 +28,7 @@ The accompanying dataset is **100% synthetic**, designed strictly for demonstrat
 |---|---|---|
 | `student_id` | String | Anonymised unique identifier (e.g., `S-0042`), randomly permuted. |
 | `cohort_group` | Categorical | Neutral section assignment (`Section A`, `Section B`, `Section C`). Used only for fairness auditing. |
-| `study_mode` | Categorical | Synthetic study mode (`Full-time`, `Part-time`). Used for fairness checks. |
+| `study_mode` | Categorical | Study enrollment status (`Full-time`). Reflects full-time student population. |
 | `prior_support_flag` | Boolean | Synthetic indicator of prior campus service usage. Never input to scoring models. |
 
 ### 3.2 `weekly_records.csv` (1,200 rows)

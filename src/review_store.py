@@ -10,26 +10,49 @@ VALID_REASON_CODES = {'Known circumstance', 'Data error', 'Already supported', '
 VALID_ACTION_STATUSES = {'Planned', 'Done', 'Declined by student', 'No longer needed'}
 VALID_SUPPORT_LEVELS = {'On Track', 'Monitor', 'Suggest Outreach', 'Priority Check-in', 'Insufficient Data'}
 PROHIBITED_DECISIONS = {'penalise', 'fail', 'punish', 'misconduct', 'disciplinary', 'drop student'}
-IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IST")
+from zoneinfo import ZoneInfo
+KOLKATA_TZ = ZoneInfo("Asia/Kolkata")
 
-def get_current_timestamp() -> str:
-    """Return current timestamp in Indian Standard Time (IST)."""
-    return datetime.datetime.now(IST).isoformat()
-
-def format_to_ist(ts: Optional[str]) -> str:
-    """Convert any UTC/ISO timestamp to a formatted Indian Standard Time (IST) string."""
+def parse_to_ist(ts: Any) -> Optional[datetime.datetime]:
+    """
+    Safely parse any ISO or string timestamp to an aware datetime in Asia/Kolkata timezone.
+    Guarantees that already-IST timestamps (including formatted strings) are not double-converted.
+    """
     if not ts:
-        return "-"
+        return None
+    if isinstance(ts, datetime.datetime):
+        if ts.tzinfo is None:
+            return ts.replace(tzinfo=datetime.timezone.utc).astimezone(KOLKATA_TZ)
+        return ts.astimezone(KOLKATA_TZ)
     try:
         clean = str(ts).strip()
-        if clean.endswith("Z"):
-            clean = clean[:-1] + "+00:00"
+        was_ist = False
+        if clean.endswith(' IST'):
+            clean = clean[:-4].strip()
+            was_ist = True
+        if clean.endswith('Z'):
+            clean = clean[:-1] + '+00:00'
         dt = datetime.datetime.fromisoformat(clean)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
-        return dt.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S IST")
+            if was_ist:
+                return dt.replace(tzinfo=KOLKATA_TZ)
+            return dt.replace(tzinfo=datetime.timezone.utc).astimezone(KOLKATA_TZ)
+        return dt.astimezone(KOLKATA_TZ)
     except Exception:
-        return str(ts)[:19].replace("T", " ") + " IST"
+        return None
+
+def get_current_timestamp() -> str:
+    """Return current timestamp in Indian Standard Time (IST) ISO format."""
+    return datetime.datetime.now(KOLKATA_TZ).isoformat()
+
+def format_to_ist(ts: Any) -> str:
+    """Convert any UTC/ISO timestamp to a formatted Asia/Kolkata (IST) string safely without double-converting."""
+    if not ts:
+        return "-"
+    dt = parse_to_ist(ts)
+    if dt is not None:
+        return dt.strftime("%Y-%m-%d %H:%M:%S IST")
+    return str(ts)[:19].replace("T", " ") + " IST"
 
 class ReviewStore:
 
@@ -365,7 +388,19 @@ class ReviewStore:
             query += ' ORDER BY log_id DESC LIMIT ?'
             params.append(limit)
             cursor.execute(query, tuple(params))
-            return [dict(r) for r in cursor.fetchall()]
+            records = [dict(r) for r in cursor.fetchall()]
+
+        # Sort chronologically by actual event timestamp (newest event first),
+        # using log_id descending as a consistent tie-breaker for identical timestamps.
+        fallback_dt = datetime.datetime.min.replace(tzinfo=KOLKATA_TZ)
+        records.sort(
+            key=lambda r: (
+                parse_to_ist(r.get('timestamp')) or fallback_dt,
+                r.get('log_id', 0)
+            ),
+            reverse=True
+        )
+        return records
 
     def get_feedback_loop_analytics(self) -> Dict[str, Any]:
         with self._get_connection() as conn:

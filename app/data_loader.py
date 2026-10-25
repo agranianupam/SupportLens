@@ -5,6 +5,10 @@ import streamlit as st
 from src.data_quality import clean_and_validate_data
 from src.features import compute_features
 from src.rules_engine import RulesEngine, load_config
+import importlib
+import src.review_store
+if not hasattr(src.review_store, 'format_to_ist') or not hasattr(src.review_store.ReviewStore, 'save_flags_batch'):
+    importlib.reload(src.review_store)
 from src.ml_model import SupportLensML, compute_agreement
 from src.review_store import ReviewStore, format_to_ist
 from src.explain import generate_explanation
