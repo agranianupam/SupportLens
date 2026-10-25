@@ -111,4 +111,8 @@ with step3:
     st.info('**3. Review & Correct**\n\nConfirm, adjust, or dismiss flags in the **Staff Review** panel. Human coordinator judgment always overrides the system.')
 with step4:
     st.info('**4. Supportive Outreach**\n\nSelect tailored supportive action templates (tutoring, extension, study guide) and log all actions in the **Audit Log**.')
+
+st.markdown('---')
+render_guardrails_banner()
 render_footer()
+
