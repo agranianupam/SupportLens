@@ -201,3 +201,100 @@ def create_threshold_sensitivity_chart(sensitivity_df: pd.DataFrame) -> go.Figur
     )
     return fig
 
+
+def create_review_outcomes_donut(decision_counts: Dict[str, int]) -> go.Figure:
+    labels = list(decision_counts.keys())
+    values = list(decision_counts.values())
+    outcome_colors = {
+        'Confirmed': '#0284C7',
+        'Corrected': '#8B5CF6',
+        'Dismissed': '#64748B',
+        'Deferred': '#F59E0B',
+    }
+    colors = [outcome_colors.get(l, '#94A3B8') for l in labels]
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=labels,
+                values=values,
+                hole=0.55,
+                marker=dict(colors=colors),
+                textinfo='label+value',
+                hoverinfo='label+percent+value',
+            )
+        ]
+    )
+    fig.update_layout(
+        title='Review Decisions Breakdown',
+        margin=dict(l=20, r=20, t=40, b=20),
+        height=300,
+        showlegend=False,
+        template='plotly_white',
+    )
+    return fig
+
+
+def create_dismissal_reasons_bar(reason_counts: Dict[str, int]) -> go.Figure:
+    labels = list(reason_counts.keys())
+    values = list(reason_counts.values())
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                x=labels,
+                y=values,
+                marker_color='#F59E0B',
+                text=values,
+                textposition='auto',
+            )
+        ]
+    )
+    fig.update_layout(
+        title='Dismissal Reasons (False Alarms)',
+        xaxis=dict(title='Reason Code'),
+        yaxis=dict(title='Count', tick0=0, dtick=1),
+        margin=dict(l=40, r=20, t=40, b=40),
+        height=300,
+        template='plotly_white',
+    )
+    return fig
+
+
+def create_action_effectiveness_bar_chart(breakdown_df: pd.DataFrame) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            name='Helpful',
+            x=breakdown_df['Action Type'],
+            y=breakdown_df['Helpful'],
+            marker_color='#10B981',
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name='Partially helpful',
+            x=breakdown_df['Action Type'],
+            y=breakdown_df['Partially helpful'],
+            marker_color='#F59E0B',
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name='Not helpful',
+            x=breakdown_df['Action Type'],
+            y=breakdown_df['Not helpful'],
+            marker_color='#EF4444',
+        )
+    )
+    fig.update_layout(
+        barmode='stack',
+        title='Action Effectiveness Breakdown by Type (Min. 3 Ratings)',
+        xaxis=dict(title='Supportive Action Type'),
+        yaxis=dict(title='Completed Feedback Count'),
+        margin=dict(l=40, r=20, t=40, b=40),
+        height=320,
+        template='plotly_white',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+    )
+    return fig
+
+

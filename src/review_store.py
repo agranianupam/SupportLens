@@ -12,8 +12,8 @@ PROHIBITED_DECISIONS = {'penalise', 'fail', 'punish', 'misconduct', 'disciplinar
 
 class ReviewStore:
 
-    def __init__(self, db_path: Optional[Path]=None):
-        self.db_path = db_path or DB_PATH
+    def __init__(self, db_path: Optional[Any] = None):
+        self.db_path = Path(db_path) if db_path else DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
@@ -56,7 +56,11 @@ class ReviewStore:
         support_level = flag_result['support_level']
         score = flag_result['score']
         categories = json.dumps(flag_result['categories'])
-        explanation_json = json.dumps(flag_result.get('explanation', {}))
+        expl_payload = {
+            'explanation': flag_result.get('explanation', {}),
+            'fired_rules': [r['id'] if isinstance(r, dict) else r for r in flag_result.get('fired_rules', [])],
+        }
+        explanation_json = json.dumps(expl_payload)
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -179,6 +183,143 @@ class ReviewStore:
             if dismissal_reasons.get('Strong performance elsewhere', 0) >= 3:
                 recommendations.append("Frequent dismissals for 'Strong performance elsewhere': consider strengthening Mitigating Rule M1 threshold.")
         return {'total_reviews': total_reviews, 'decision_breakdown': decision_counts, 'dismissal_reasons': dismissal_reasons, 'system_tuning_recommendations': recommendations}
+
+    def get_review_analytics(self, dismissal_rate_threshold: float = 0.30, min_reviews_threshold: int = 5) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT r.decision, r.reason_code, f.explanation_json FROM reviews r JOIN flags f ON r.flag_id = f.flag_id')
+            rows = cursor.fetchall()
+
+        total_reviews = len(rows)
+        decision_counts = {}
+        reason_counts = {}
+        rule_totals = {}
+        rule_dismissals = {}
+
+        for row in rows:
+            decision = row['decision']
+            reason = row['reason_code']
+            decision_counts[decision] = decision_counts.get(decision, 0) + 1
+            if reason:
+                reason_counts[reason] = reason_counts.get(reason, 0) + 1
+
+            # Parse fired rules from flag explanation_json
+            try:
+                expl_data = json.loads(row['explanation_json'])
+                if isinstance(expl_data, dict):
+                    fired = expl_data.get('fired_rules', [])
+                else:
+                    fired = []
+            except Exception:
+                fired = []
+
+            for r_item in fired:
+                rid = r_item['id'] if isinstance(r_item, dict) else str(r_item)
+                rule_totals[rid] = rule_totals.get(rid, 0) + 1
+                if decision == 'Dismissed':
+                    rule_dismissals[rid] = rule_dismissals.get(rid, 0) + 1
+
+        decision_pcts = {
+            dec: round((cnt / total_reviews) * 100, 1) if total_reviews > 0 else 0.0
+            for dec, cnt in decision_counts.items()
+        }
+
+        per_rule_analytics = []
+        suggested_rule_reviews = []
+        for rid, tot in rule_totals.items():
+            dism = rule_dismissals.get(rid, 0)
+            rate = dism / tot if tot > 0 else 0.0
+            per_rule_analytics.append({
+                'Rule ID': rid,
+                'Total Reviews': tot,
+                'Dismissals': dism,
+                'Dismissal Rate (%)': round(rate * 100, 1),
+            })
+            if rate > dismissal_rate_threshold and tot >= min_reviews_threshold:
+                suggested_rule_reviews.append(
+                    f"Rule {rid} was dismissed in {rate * 100:.0f}% of reviewed cases ({dism}/{tot}); consider reviewing its threshold."
+                )
+
+        data_quality_notice = None
+        data_error_count = reason_counts.get('Data error', 0)
+        total_dismissals = decision_counts.get('Dismissed', 0)
+        if data_error_count >= 3 or (total_dismissals > 0 and (data_error_count / total_dismissals) >= 0.30):
+            data_quality_notice = (
+                f"Data quality attention needed: {data_error_count} flags were dismissed due to 'Data error'. "
+                "Investigate upstream attendance/quiz sync issues."
+            )
+
+        return {
+            'total_reviews': total_reviews,
+            'decision_counts': decision_counts,
+            'decision_pcts': decision_pcts,
+            'reason_counts': reason_counts,
+            'per_rule_analytics': per_rule_analytics,
+            'suggested_rule_reviews': suggested_rule_reviews,
+            'data_quality_notice': data_quality_notice,
+        }
+
+    def get_cohort_action_effectiveness(self, min_ratings_per_type: int = 3) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT a.action_id, a.action_type, a.status, af.outcome, af.staff_note
+                FROM actions a
+                LEFT JOIN action_feedback af ON a.action_id = af.action_id
+            ''')
+            rows = [dict(r) for r in cursor.fetchall()]
+
+        total_actions = len(rows)
+        planned_count = sum(1 for r in rows if r['status'] == 'Planned')
+        completed_count = sum(1 for r in rows if r['status'] == 'Done')
+        completed_pct = round((completed_count / total_actions * 100), 1) if total_actions > 0 else 0.0
+
+        rated_rows = [r for r in rows if r.get('outcome') is not None]
+        total_rated = len(rated_rows)
+
+        helpful_count = sum(1 for r in rated_rows if r['outcome'] == 'Helpful')
+        partially_helpful_count = sum(1 for r in rated_rows if r['outcome'] == 'Partially helpful')
+        not_helpful_count = sum(1 for r in rated_rows if r['outcome'] == 'Not helpful')
+
+        helpful_pct = round((helpful_count / total_rated * 100), 1) if total_rated > 0 else 0.0
+        partially_helpful_pct = round((partially_helpful_count / total_rated * 100), 1) if total_rated > 0 else 0.0
+        not_helpful_pct = round((not_helpful_count / total_rated * 100), 1) if total_rated > 0 else 0.0
+
+        # Aggregate breakdown by action_type with minimum count rule (>= min_ratings_per_type)
+        type_groups = {}
+        for r in rated_rows:
+            atype = r['action_type']
+            if atype not in type_groups:
+                type_groups[atype] = {'Helpful': 0, 'Partially helpful': 0, 'Not helpful': 0, 'total': 0}
+            type_groups[atype][r['outcome']] += 1
+            type_groups[atype]['total'] += 1
+
+        breakdown_by_type = []
+        for atype, g in type_groups.items():
+            if g['total'] >= min_ratings_per_type:
+                breakdown_by_type.append({
+                    'Action Type': atype,
+                    'Helpful': g['Helpful'],
+                    'Partially helpful': g['Partially helpful'],
+                    'Not helpful': g['Not helpful'],
+                    'Total Rated': g['total'],
+                })
+
+        return {
+            'total_actions': total_actions,
+            'planned_count': planned_count,
+            'completed_count': completed_count,
+            'completed_pct': completed_pct,
+            'total_rated': total_rated,
+            'helpful_count': helpful_count,
+            'helpful_pct': helpful_pct,
+            'partially_helpful_count': partially_helpful_count,
+            'partially_helpful_pct': partially_helpful_pct,
+            'not_helpful_count': not_helpful_count,
+            'not_helpful_pct': not_helpful_pct,
+            'breakdown_by_type': breakdown_by_type,
+            'is_empty': total_rated == 0,
+        }
 
     def record_action_feedback(
     self,

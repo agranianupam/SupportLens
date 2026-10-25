@@ -41,6 +41,35 @@ if len(df_display) > 0:
 else:
     st.info('No students match the current filter selection.')
 st.markdown('---')
+st.markdown('### 📈 Cohort-Level Supportive Action Effectiveness')
+st.caption('Aggregate effectiveness feedback helps coordinators refine support strategies. Actions are evaluated as cohort trends; individual students are never evaluated or ranked.')
+
+store = get_review_store()
+eff = store.get_cohort_action_effectiveness(min_ratings_per_type=3)
+
+eff_c1, eff_c2, eff_c3, eff_c4, eff_c5 = st.columns(5)
+with eff_c1:
+    st.metric('Actions Planned', eff['planned_count'], help='Total supportive actions initiated by coordinators')
+with eff_c2:
+    st.metric('Completed', f"{eff['completed_count']} ({eff['completed_pct']}%)", help='Actions executed and marked done')
+with eff_c3:
+    st.metric('Helpful', f"{eff['helpful_pct']}%", f"{eff['helpful_count']} actions", help='Rated helpful in student follow-up')
+with eff_c4:
+    st.metric('Partially Helpful', f"{eff['partially_helpful_pct']}%", f"{eff['partially_helpful_count']} actions", help='Rated partially helpful in student follow-up')
+with eff_c5:
+    st.metric('Not Helpful', f"{eff['not_helpful_pct']}%", f"{eff['not_helpful_count']} actions", help='Rated not helpful / alternative approach needed')
+
+if eff['is_empty']:
+    st.info('ℹ️ No completed actions rated yet. Follow-up feedback will appear here as actions conclude.')
+else:
+    if eff['breakdown_by_type']:
+        from app.components.charts import create_action_effectiveness_bar_chart
+        eff_df = pd.DataFrame(eff['breakdown_by_type'])
+        st.plotly_chart(create_action_effectiveness_bar_chart(eff_df), use_container_width=True)
+    else:
+        st.caption('🔒 Action breakdown by type is hidden until at least 3 ratings are collected per category to preserve student and staff privacy.')
+
+st.markdown('---')
 st.markdown('### 📥 Export Anonymised Cohort Artifacts')
 ex_col1, ex_col2 = st.columns(2)
 with ex_col1:

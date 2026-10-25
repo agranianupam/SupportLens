@@ -142,26 +142,52 @@ with tab_actions:
     else:
         st.info("No supportive actions recorded yet. Open a student's profile to record planned outreach.")
 with tab_analytics:
-    st.markdown('### 🔄 Review Feedback Loop & System Tuning')
-    st.markdown('Staff review decisions serve as the true ground truth signal in a live deployment. Analyzing dismissals identifies data quality bugs and guides rule threshold recalibration.')
-    fb = store.get_feedback_loop_analytics()
-    fb_col1, fb_col2 = st.columns(2)
-    with fb_col1:
-        st.markdown(f"**Total Coordinator Reviews Completed:** `{fb['total_reviews']}`")
-        if fb['decision_breakdown']:
-            st.table(pd.DataFrame(list(fb['decision_breakdown'].items()), columns=['Review Decision', 'Count']))
+    st.markdown('### 🔄 Review Feedback Loop & Dismissal Analytics')
+    st.markdown('Staff review decisions serve as the ground truth calibration signal. Tracking dismissals identifies upstream data errors and guides rule recalibration without punitive bias.')
+    
+    with st.expander('⚙️ Calibration Settings', expanded=False):
+        c_col1, c_col2 = st.columns(2)
+        with c_col1:
+            dismissal_thresh = st.slider('Dismissal Rate Alert Threshold', min_value=0.10, max_value=0.60, value=0.30, step=0.05, format='%.2f')
+        with c_col2:
+            min_revs = st.slider('Minimum Reviews per Rule', min_value=1, max_value=15, value=5, step=1)
+            
+    analytics = store.get_review_analytics(dismissal_rate_threshold=dismissal_thresh, min_reviews_threshold=min_revs)
+    
+    if analytics['total_reviews'] > 0:
+        if analytics.get('data_quality_notice'):
+            st.warning(f"⚠️ **Data Quality Notice:** {analytics['data_quality_notice']}")
+            
+        chart_col1, chart_col2 = st.columns(2)
+        with chart_col1:
+            from app.components.charts import create_review_outcomes_donut, create_dismissal_reasons_bar
+            st.plotly_chart(create_review_outcomes_donut(analytics['decision_counts']), use_container_width=True)
+            # Outcomes summary table
+            outcomes_df = pd.DataFrame([
+                {'Decision': dec, 'Count': analytics['decision_counts'].get(dec, 0), 'Share (%)': f"{analytics['decision_pcts'].get(dec, 0.0):.1f}%"}
+                for dec in ['Confirmed', 'Corrected', 'Dismissed', 'Deferred']
+            ])
+            st.table(outcomes_df)
+        with chart_col2:
+            if analytics['reason_counts']:
+                st.plotly_chart(create_dismissal_reasons_bar(analytics['reason_counts']), use_container_width=True)
+            else:
+                st.info('No dismissals recorded yet.')
+                
+        st.markdown('#### 🎯 Per-Rule Dismissal Rate')
+        if analytics['per_rule_analytics']:
+            rule_df = pd.DataFrame(analytics['per_rule_analytics'])
+            st.dataframe(rule_df, use_container_width=True, hide_index=True)
         else:
-            st.caption('No reviews logged yet.')
-    with fb_col2:
-        st.markdown('**Common Dismissal (False Positive) Reasons:**')
-        if fb['dismissal_reasons']:
-            st.table(pd.DataFrame(list(fb['dismissal_reasons'].items()), columns=['Dismissal Reason', 'Count']))
+            st.caption('No fired rule associations captured yet.')
+            
+        st.markdown('#### 💡 Suggested Rule Threshold Reviews')
+        if analytics['suggested_rule_reviews']:
+            for sug in analytics['suggested_rule_reviews']:
+                st.warning(f"🔧 {sug}")
         else:
-            st.caption('No dismissals recorded.')
-    st.markdown('#### 💡 Continuous Improvement Suggestions')
-    if fb['system_tuning_recommendations']:
-        for rec_text in fb['system_tuning_recommendations']:
-            st.warning(f'🔧 **Recommended Action:** {rec_text}')
+            st.success(f"All evaluated rules remain below the {int(dismissal_thresh * 100)}% dismissal alert threshold (min {min_revs} reviews).")
     else:
-        st.success('Current review patterns indicate healthy threshold calibration. No systemic bias detected.')
+        st.info('No staff reviews recorded yet. Triage flagged students to generate feedback analytics.')
+
 render_footer()
