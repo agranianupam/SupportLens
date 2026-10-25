@@ -25,21 +25,52 @@ from src.evaluation import (
 st.set_page_config(page_title='Evaluation - SupportLens', page_icon='🧪', layout='wide')
 
 st.title('🧪 System Evaluation & Benchmark Analysis')
+
+# Sidebar: Evaluation Week Control
+st.sidebar.header('🔍 Evaluation Controls')
+default_week = int(st.session_state.get('eval_snapshot_week', 10))
+if default_week not in range(4, 13):
+    default_week = 10
+
+col_bench_btn, col_reset_btn = st.sidebar.columns(2)
+with col_bench_btn:
+    if st.button("🏆 Wk 10 Benchmark", use_container_width=True, help="Reset to official benchmark snapshot"):
+        st.session_state['eval_snapshot_week'] = 10
+        st.rerun()
+
+as_of_week = st.sidebar.slider(
+    '📅 Evaluation Snapshot Week',
+    min_value=4,
+    max_value=12,
+    value=int(st.session_state.get('eval_snapshot_week', default_week)),
+    step=1,
+    help="Select course week to evaluate. Week 10 is the project standard benchmark."
+)
+st.session_state['eval_snapshot_week'] = as_of_week
+
+# Benchmark vs Exploratory Status Banner
+if as_of_week == 10:
+    st.info("🏆 **Official Benchmark Snapshot (Week 10)**: This is the standardized midterm-validation checkpoint used for project reporting, ablation analysis, and presentation slides.")
+else:
+    st.warning(f"🔍 **Exploratory Evaluation (Week {as_of_week})**: Live recalculated performance strictly using telemetry available up to Week {as_of_week}. Ground truth labels remain fixed oracle markers.")
+
 st.markdown(
-    'Rigorous, honest evaluation of SupportLens against synthetic ground truth labels at **Week 10**, '
+    f'Rigorous, honest evaluation of SupportLens against synthetic ground truth labels as of **Week {as_of_week}**'
+    f'{" (Benchmark Snapshot)" if as_of_week == 10 else ""}, '
     'contrasted with two standard educational baselines, multi-seed stability testing, error ablation, '
     'and threshold sensitivity analysis.'
 )
 
 students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
-features_df, cohort_records = get_cohort_snapshot(10)
+features_df, cohort_records = get_cohort_snapshot(as_of_week)
 ml = get_ml_system()
 engine = RulesEngine()
 
+
 @st.cache_data
-def get_cached_evaluation_results(as_of_week: int = 10):
+def get_cached_evaluation_results(eval_week: int = 10):
     s_df, c_weekly, gt_df, _ = load_raw_data()
-    f_df, _ = get_cohort_snapshot(as_of_week)
+    f_df, _ = get_cohort_snapshot(eval_week)
     ml_sys = get_ml_system()
     r_engine = RulesEngine()
     return evaluate_snapshot(
@@ -47,25 +78,28 @@ def get_cached_evaluation_results(as_of_week: int = 10):
         labels_df=gt_df,
         students_df=s_df,
         weekly_df=c_weekly,
-        as_of_week=as_of_week,
+        as_of_week=eval_week,
         engine=r_engine,
         ml_system=ml_sys,
     )
 
-eval_results = get_cached_evaluation_results(10)
+
+eval_results = get_cached_evaluation_results(as_of_week)
 
 rule_f1 = eval_results['models']['Rule Engine']['f1']
+rule_prec = eval_results['models']['Rule Engine']['precision']
+rule_rec = eval_results['models']['Rule Engine']['recall']
 rule_burden = eval_results['models']['Rule Engine']['alert_burden_pct']
 avg_early = eval_results['earliness']['avg_first_flag_week']
 early_str = f"Week {avg_early}" if avg_early is not None else "N/A"
 
-st.info(f"""### 📌 Key Findings & Architectural Verdict
-1. **Trend & Multi-Signal Awareness Beats Naïve Baselines:** The SupportLens Rule Engine achieves an **F1 score of {rule_f1:.2f}**, substantially outperforming single-metric heuristics (*Attendance < 75%* and *Quiz < 50%*) which suffer from high false-alarm rates.
-2. **Controlled Alert Burden:** Total cohort flags remain tightly controlled at **{rule_burden:.1f}%**, meeting our target threshold (<25%) to protect coordinators against alert fatigue.
-3. **Earliness Guarantee:** Students requiring support are flagged on average by **{early_str}**—well before mid-semester assessments.""")
+st.info(f"""### 📌 Key Findings & Architectural Verdict (as of Week {as_of_week})
+1. **Trend & Multi-Signal Awareness Beats Naïve Baselines:** As of Week {as_of_week}, the SupportLens Rule Engine achieves an **F1 score of {rule_f1:.3f}** (Precision: {rule_prec:.3f}, Recall: {rule_rec:.3f}), substantially outperforming single-metric heuristics (*Attendance < 75%* and *Quiz < 50%*).
+2. **Controlled Alert Burden:** Total cohort flags stand at **{rule_burden:.1f}%** (target <25%), preventing coordinator alert fatigue.
+3. **Timeliness of Detection:** For at-need students detected by Week {as_of_week}, the average first flag appears at **{early_str}** across the semester trajectory.""")
 
 # SECTION 1: Baseline Comparison
-st.markdown('### 1. Model & Baseline Comparison (Week 10 Snapshot)')
+st.markdown(f'### 1. Model & Baseline Comparison (Week {as_of_week} Snapshot)')
 models_data = []
 for model_name, m in eval_results['models'].items():
     models_data.append({
@@ -85,45 +119,46 @@ st.table(pd.DataFrame(models_data))
 st.markdown('---')
 
 # SECTION 2: Multi-Seed Stability
-st.markdown('### 2. Multi-Seed Stability & Generalization')
+st.markdown(f'### 2. Multi-Seed Stability & Generalization (Week {as_of_week})')
 st.markdown(
-    'To verify that metrics do not reflect a single lucky random seed, the pipeline is evaluated across '
-    '5 distinct random seeds (`42, 7, 123, 2024, 99`).'
+    f'To verify that metrics do not reflect a single lucky random seed, the pipeline evaluates 5 distinct '
+    f'random seeds (`42, 7, 123, 2024, 99`) strictly using telemetry available as of Week {as_of_week}.'
 )
 
 
 @st.cache_data
-def get_cached_multiseed_results():
-    return run_multiseed_evaluation(seeds=[42, 7, 123, 2024, 99], as_of_week=10)
+def get_cached_multiseed_results(week_for_ms: int = 10):
+    return run_multiseed_evaluation(seeds=[42, 7, 123, 2024, 99], as_of_week=week_for_ms)
 
 
-col_ms_btn, col_ms_info = st.columns([1, 3])
+col_ms_btn, col_ms_info = st.columns([1.2, 3])
 with col_ms_btn:
-    trigger_multiseed = st.button("▶️ Run 5-Seed Stability Test", key="btn_run_ms", type="primary")
+    trigger_multiseed = st.button(f"▶️ Run 5-Seed Stability Test (Week {as_of_week})", key=f"btn_run_ms_{as_of_week}", type="primary")
 
 if trigger_multiseed:
-    st.session_state['run_multiseed'] = True
+    st.session_state[f'run_multiseed_{as_of_week}'] = True
 
-if st.session_state.get('run_multiseed', False):
-    with st.spinner('Running 5-seed stability simulation (seeds: 42, 7, 123, 2024, 99)...'):
-        multiseed_res = get_cached_multiseed_results()
+if st.session_state.get(f'run_multiseed_{as_of_week}', False):
+    with st.spinner(f'Running 5-seed stability simulation for Week {as_of_week} (seeds: 42, 7, 123, 2024, 99)...'):
+        multiseed_res = get_cached_multiseed_results(as_of_week)
     detailed_df = multiseed_res['detailed_df']
     summary_df = multiseed_res['summary_df']
 
     ms_col1, ms_col2 = st.columns([1.2, 1])
     with ms_col1:
-        st.markdown('**Mean ± Std Performance Across 5 Seeds:**')
+        st.markdown(f'**Mean ± Std Performance Across 5 Seeds (Week {as_of_week}):**')
         st.table(summary_df)
     with ms_col2:
         fig_box = create_multiseed_box_plot(detailed_df)
         st.plotly_chart(fig_box, use_container_width=True)
+    st.caption("⚙️ **Computation Transparency**: All 5 cohorts are generated from separate random seeds, feature-engineered, and evaluated without lookahead bias. Results are computed live and cached in session memory.")
 else:
-    st.info("💡 Multi-seed evaluation tests generalisation across 5 distinct random seeds (`42, 7, 123, 2024, 99`). Click **'Run 5-Seed Stability Test'** above to execute this experiment on demand.")
+    st.info(f"💡 Multi-seed evaluation tests generalisation across 5 distinct random seeds (`42, 7, 123, 2024, 99`) as of Week {as_of_week}. Click **'Run 5-Seed Stability Test'** above to execute this simulation on demand.")
 
 st.markdown('---')
 
 # SECTION 3: Earliness
-st.markdown('### 3. Timeliness of Detection (Earliness Metric)')
+st.markdown(f'### 3. Timeliness of Detection (Earliness Metric up to Week {as_of_week})')
 earliness = eval_results['earliness']
 e_col1, e_col2, e_col3, e_col4 = st.columns(4)
 e_col1.metric('Average First Flag Week', f"Week {earliness['avg_first_flag_week'] or 'N/A'}")
@@ -139,9 +174,9 @@ e_col3.metric(
     f"{rel_median:+.1f} wks" if rel_median is not None else "N/A",
 )
 e_col4.metric(
-    'Never Flagged True-Need',
+    f'Unflagged True-Need (Wk {as_of_week})',
     f"{earliness['never_flagged_count']} of {earliness['total_true_need_students']}",
-    help="Number of at-risk students not flagged by Week 10",
+    help=f"Number of at-risk students not flagged by Week {as_of_week}",
 )
 
 fig_early = create_earliness_histogram(earliness['earliness_records'])
@@ -154,10 +189,10 @@ st.caption(
 st.markdown('---')
 
 # SECTION 4: Ablation Study
-st.markdown('### 4. Ablation Study: Dissecting Protective Architecture')
+st.markdown(f'### 4. Ablation Study: Dissecting Protective Architecture (Week {as_of_week})')
 st.markdown(
-    'We evaluate the rule engine across 6 configurations to isolate the exact value of mitigating rules (M1, M2), '
-    'the multi-week persistence filter, and compound convergence rules (C1, C2):'
+    f'We evaluate the rule engine across 6 configurations as of Week {as_of_week} to isolate the exact value '
+    'of mitigating rules (M1, M2), the multi-week persistence filter, and compound convergence rules (C1, C2):'
 )
 ablation_df = eval_results['ablation_df']
 st.table(ablation_df[['Configuration', 'Precision', 'Recall', 'F1 Score', 'False Positives', 'Alert Burden (%)']])
@@ -169,7 +204,7 @@ for _, row in ablation_df.iterrows():
 st.markdown('---')
 
 # SECTION 5: Error Analysis
-st.markdown('### 5. Error Analysis by Latent Archetype')
+st.markdown(f'### 5. Error Analysis by Latent Archetype (Week {as_of_week})')
 err_res = eval_results['error_analysis']
 err_col1, err_col2 = st.columns(2)
 with err_col1:
@@ -179,7 +214,7 @@ with err_col1:
             exp_text = err_res['group_explanations'].get(f"FP_{arch}", "")
             st.markdown(f"- **{arch.replace('_', ' ').title()}** ({count} students): {exp_text}")
     else:
-        st.success('Zero false positives observed at current threshold calibration.')
+        st.success(f'Zero false positives observed as of Week {as_of_week}.')
 
 with err_col2:
     st.markdown('#### False Negatives (Need Support but Missed)')
@@ -188,7 +223,7 @@ with err_col2:
             exp_text = err_res['group_explanations'].get(f"FN_{arch}", "")
             st.markdown(f"- **{arch.replace('_', ' ').title()}** ({count} students): {exp_text}")
     else:
-        st.success('Zero false negatives observed.')
+        st.success(f'Zero false negatives observed as of Week {as_of_week}.')
 
 st.markdown('#### Individual Worst Misses (Top False Alarms & Missed Students)')
 st.dataframe(err_res['worst_misses_df'], use_container_width=True, hide_index=True)
@@ -196,10 +231,10 @@ st.dataframe(err_res['worst_misses_df'], use_container_width=True, hide_index=Tr
 st.markdown('---')
 
 # SECTION 6: Threshold Sensitivity
-st.markdown('### 6. Threshold Sensitivity Analysis')
+st.markdown(f'### 6. Threshold Sensitivity Analysis (Week {as_of_week} Snapshot)')
 st.markdown(
-    'Core thresholds (attendance cutoff, missing assignment cutoff, quiz cutoff) are varied by '
-    '±10% and ±20% to assess stability:'
+    f'Core thresholds (attendance cutoff, missing assignment cutoff, quiz cutoff) are varied by '
+    f'±10% and ±20% against the Week {as_of_week} feature set to assess stability:'
 )
 
 sens_res = run_threshold_sensitivity(features_df, ground_truth, engine)

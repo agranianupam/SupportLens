@@ -75,7 +75,14 @@ with e_col1:
     fired = rec.get('fired_rules', [])
     if fired:
         st.markdown('**Triggered Rule Detail:**')
-        fired_df = pd.DataFrame([{'Rule': r['id'], 'Category': r['category'], 'Observed Metric': r['observed_value'], 'Threshold': r['threshold'], 'Points': f"+{r['points']}", 'Explanation': r['description']} for r in fired])
+        fired_df = pd.DataFrame([{
+            'Rule': r['id'],
+            'Category': r['category'],
+            'Observed Metric': str(r['observed_value']),
+            'Threshold': str(r['threshold']),
+            'Points': f"+{r['points']}",
+            'Explanation': r['description']
+        } for r in fired])
         st.table(fired_df)
     else:
         st.caption('No rules triggered. Engagement remains within expected parameters.')

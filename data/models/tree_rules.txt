@@ -1,19 +1,16 @@
-|--- att_mean_recent <= -0.55
-|   |--- quiz_mean_overall <= 0.83
-|   |   |--- class: 1
-|   |--- quiz_mean_overall >  0.83
-|   |   |--- quiz_missing_rate <= -0.46
-|   |   |   |--- class: 0
-|   |   |--- quiz_missing_rate >  -0.46
-|   |   |   |--- class: 0
-|--- att_mean_recent >  -0.55
-|   |--- quiz_mean_overall <= -0.53
-|   |   |--- data_confidence_score <= -0.10
-|   |   |   |--- class: 0
-|   |   |--- data_confidence_score >  -0.10
+|--- quiz_mean_recent <= 0.17
+|   |--- data_confidence_score <= 0.71
+|   |   |--- att_mean_overall <= -0.01
 |   |   |   |--- class: 1
-|   |--- quiz_mean_overall >  -0.53
-|   |   |--- data_confidence_score <= -1.92
+|   |   |--- att_mean_overall >  -0.01
 |   |   |   |--- class: 0
-|   |   |--- data_confidence_score >  -1.92
+|   |--- data_confidence_score >  0.71
+|   |   |--- att_mean_recent <= -0.30
 |   |   |   |--- class: 0
+|   |   |--- att_mean_recent >  -0.30
+|   |   |   |--- class: 0
+|--- quiz_mean_recent >  0.17
+|   |--- quiz_participation_rate <= -2.40
+|   |   |--- class: 0
+|   |--- quiz_participation_rate >  -2.40
+|   |   |--- class: 0
