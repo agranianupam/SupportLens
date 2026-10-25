@@ -72,6 +72,8 @@ with e_col1:
     abstained = rec.get('abstained_rules', [])
     if abstained:
         st.caption(f"ℹ️ Rules abstained due to insufficient data points: {', '.join(abstained)}")
+    persistence_note = expl.get('persistence', rec.get('persistence_note', 'Evaluated over snapshot history.'))
+    st.markdown(f"**Multi-Week Persistence:** {persistence_note}")
 with e_col2:
     st.markdown("### 🌟 What's Going Well (Strengths)")
     st.success(expl.get('strengths', 'The student is actively enrolled.'))
@@ -79,10 +81,11 @@ with e_col2:
     ml_prob = rec.get('ml_probability', 0.0)
     st.markdown(f'**ML Predicted Support Probability:** `{ml_prob:.1%}`')
     st.caption('Logistic Regression (Balanced, Interpretable Weights)')
+    st.caption('ℹ️ Note: The rule engine drives the displayed flag; ML is a cross-check only.')
     top_factors = rec.get('top_contributing_factors', [])
     if top_factors:
         st.markdown('**Top Influencing Factors:**')
-        for tf in top_factors:
+        for tf in top_factors[:3]:
             st.markdown(f'- {tf}')
 st.markdown('---')
 st.markdown('### ✍️ Staff Review & Supportive Action Panel')

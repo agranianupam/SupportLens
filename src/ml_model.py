@@ -106,13 +106,38 @@ class SupportLensML:
             with open(tree_path, 'r', encoding='utf-8') as f:
                 self.tree_rules_text = f.read()
 
-def compute_agreement(rule_level: str, ml_flag: bool) -> Dict[str, str]:
+def compute_agreement(rule_level: str, ml_flag_or_prob: Any, ml_threshold: float = 0.5) -> Dict[str, str]:
     rule_flag = rule_level in ['Suggest Outreach', 'Priority Check-in']
-    if rule_flag and ml_flag:
-        return {'badge': 'Agreement: Needs Support', 'icon': '✅', 'type': 'both_support', 'description': 'Both rule engine and ML model suggest outreach would be beneficial.'}
-    elif not rule_flag and (not ml_flag):
-        return {'badge': 'Agreement: On Track', 'icon': '✅', 'type': 'both_ontrack', 'description': 'Both rule engine and ML model indicate the student is currently on track.'}
-    elif rule_flag and (not ml_flag):
-        return {'badge': 'Review: Rules Flagged Only', 'icon': '⚠️', 'type': 'rules_only', 'description': 'Rule engine fired but ML probability is lower; review for potential mitigating factors or false alarm.'}
+    if isinstance(ml_flag_or_prob, bool):
+        ml_flag = ml_flag_or_prob
     else:
-        return {'badge': 'Review: ML Flagged Only', 'icon': '⚠️', 'type': 'ml_only', 'description': 'ML model picked up subtler multivariate patterns not crossing individual rule thresholds.'}
+        ml_flag = float(ml_flag_or_prob) >= ml_threshold
+
+    if rule_flag and ml_flag:
+        return {
+            'badge': 'Both indicate support may help',
+            'icon': '✅',
+            'type': 'both_support',
+            'description': 'Both rule engine and ML model suggest outreach would be beneficial.',
+        }
+    elif not rule_flag and (not ml_flag):
+        return {
+            'badge': 'Both on track',
+            'icon': '✅',
+            'type': 'both_ontrack',
+            'description': 'Both rule engine and ML model indicate the student is currently on track.',
+        }
+    elif rule_flag and (not ml_flag):
+        return {
+            'badge': 'Rules only: review for possible false positive',
+            'icon': '⚠️',
+            'type': 'rules_only',
+            'description': 'Rule engine fired but ML probability is below threshold; review for potential false positive.',
+        }
+    else:
+        return {
+            'badge': 'ML only: review for possible missed signal',
+            'icon': '⚠️',
+            'type': 'ml_only',
+            'description': 'ML model indicates potential need while rule thresholds were not crossed; review for possible missed signal.',
+        }

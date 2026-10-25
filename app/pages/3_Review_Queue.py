@@ -30,7 +30,17 @@ def get_priority_weight(rec: dict) -> int:
         weight += 10
     return weight
 sorted_queue = sorted(cohort_records, key=get_priority_weight, reverse=True)
-tab_queue, tab_actions, tab_analytics = st.tabs(['🚀 Prioritised Triage Queue', '📌 Action Tracker', '🔄 Feedback Loop Analytics'])
+disagreement_records = [
+    r for r in cohort_records if r.get('agreement', {}).get('type') in ['rules_only', 'ml_only']
+]
+
+tab_queue, tab_disagreements, tab_actions, tab_analytics = st.tabs([
+    '🚀 Prioritised Triage Queue',
+    f'⚠️ Worth a Second Look ({len(disagreement_records)})',
+    '📌 Action Tracker',
+    '🔄 Feedback Loop Analytics',
+])
+
 with tab_queue:
     show_unreviewed_only = st.checkbox('Show unreviewed students only', value=True)
     if show_unreviewed_only:
@@ -66,6 +76,48 @@ with tab_queue:
                     st.rerun()
             with q_col3:
                 st.caption('For full inspection and custom supportive action plans, open **Student Detail**.')
+
+with tab_disagreements:
+    st.markdown('### ⚠️ Worth a Second Look: Rule-vs-ML Disagreements')
+    st.info(
+        "ℹ️ **Architectural Note:** The interpretable rule engine drives the displayed flag; "
+        "machine learning acts strictly as an auxiliary cross-check to illuminate subtle patterns "
+        "or potential false positives."
+    )
+    if disagreement_records:
+        st.markdown(f"**{len(disagreement_records)} students with rule-vs-ML misalignment:**")
+        for r in disagreement_records:
+            s_id = r['student_id']
+            ag = r.get('agreement', {})
+            with st.expander(f"{r['student_id']} — {ag.get('badge')} (Score: {r['score']}, ML: {r['ml_probability']:.1%})"):
+                d_c1, d_c2 = st.columns([1, 1])
+                with d_c1:
+                    st.markdown(f"**Rule Level:** {support_level_badge(r['display_level'])}", unsafe_allow_html=True)
+                    st.markdown(f"**Alignment:** {agreement_badge(ag)}", unsafe_allow_html=True)
+                    st.markdown(f"**Data Confidence:** {confidence_badge(r['data_confidence'], r['data_confidence_score'])}", unsafe_allow_html=True)
+                    st.caption(f"Reason: {ag.get('description', '')}")
+                with d_c2:
+                    st.markdown("**Top ML Contributing Factors (Plain English):**")
+                    factors = r.get('top_contributing_factors', [])
+                    if factors:
+                        for f in factors[:3]:
+                            st.markdown(f"- {f}")
+                    else:
+                        st.caption("No specific outlier features detected.")
+                st.markdown('---')
+                btn_col1, btn_col2 = st.columns(2)
+                with btn_col1:
+                    if st.button('✓ Confirm Rule Flag', key=f'dis_conf_{s_id}'):
+                        store.record_review(r['flag_id'], s_id, 'STAFF-01', 'Confirmed')
+                        st.success(f'{s_id} confirmed!')
+                        st.rerun()
+                with btn_col2:
+                    if st.button('✕ Dismiss as False Alarm', key=f'dis_dism_{s_id}'):
+                        store.record_review(r['flag_id'], s_id, 'STAFF-01', 'Dismissed', reason_code='Strong performance elsewhere', reason_note='Dismissed via Disagreements Review')
+                        st.info(f'{s_id} dismissed.')
+                        st.rerun()
+    else:
+        st.success("✅ Zero disagreements between Rule Engine and ML model at current threshold settings.")
 with tab_actions:
     st.markdown('### 📌 Active Supportive Follow-up Actions')
     all_actions = store.get_student_history('')['actions']

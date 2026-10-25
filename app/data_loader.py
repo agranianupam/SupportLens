@@ -32,13 +32,28 @@ def get_ml_system() -> SupportLensML:
         ml.train_models(feat_df, ground_truth)
     return ml
 
+def compute_historical_snapshots(cleaned_weekly: pd.DataFrame, as_of_week: int, engine: RulesEngine) -> Dict[str, List[int]]:
+    history: Dict[str, List[int]] = {}
+    prev_weeks = [w for w in [as_of_week - 2, as_of_week - 1] if w >= 4]
+    for w in prev_weeks:
+        w_feats = compute_features(cleaned_weekly, as_of_week=w)
+        w_res = engine.score_all_students(w_feats, config_override={'disable_persistence': True})
+        for r in w_res:
+            sid = r['student_id']
+            if sid not in history:
+                history[sid] = []
+            history[sid].append(r['score'])
+    return history
+
+
 def get_cohort_snapshot(as_of_week: int, custom_thresholds: Dict[str, Any]=None) -> Tuple[pd.DataFrame, list]:
     students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
     features_df = compute_features(cleaned_weekly, as_of_week=as_of_week)
     engine = RulesEngine()
     store = get_review_store()
     ml = get_ml_system()
-    flag_results = engine.score_all_students(features_df, custom_thresholds=custom_thresholds)
+    hist_snapshots = compute_historical_snapshots(cleaned_weekly, as_of_week, engine)
+    flag_results = engine.score_all_students(features_df, historical_snapshots=hist_snapshots, custom_thresholds=custom_thresholds)
     ml_preds = ml.predict(features_df)
     ml_dict = ml_preds.set_index('student_id').to_dict(orient='index')
     cohort_records = []

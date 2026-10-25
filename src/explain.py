@@ -65,4 +65,12 @@ def generate_explanation(flag_result: Dict[str, Any], features: Optional[Dict[st
     verify_text_safety(strengths_line)
     for b in bullets:
         verify_text_safety(b)
-    return {'summary': summary, 'bullets': bullets, 'strengths': strengths_line, 'suggested_actions': unique_actions}
+    persistence_line = flag_result.get('persistence_note', 'Concern evaluated across active snapshot history.')
+    verify_text_safety(persistence_line)
+    return {
+        'summary': summary,
+        'bullets': bullets,
+        'strengths': strengths_line,
+        'suggested_actions': unique_actions,
+        'persistence': persistence_line,
+    }
