@@ -21,6 +21,8 @@ if demo_choice and demo_archetypes[demo_choice]:
     if matches:
         selected_id = matches[0]
 all_ids = sorted([r['student_id'] for r in cohort_records])
+if not selected_id and 'selected_student_id' in st.session_state and st.session_state['selected_student_id'] in all_ids:
+    selected_id = st.session_state['selected_student_id']
 default_index = all_ids.index(selected_id) if selected_id in all_ids else 0
 student_id = st.sidebar.selectbox('Select Student ID', all_ids, index=default_index)
 rec = next((r for r in cohort_records if r['student_id'] == student_id), None)

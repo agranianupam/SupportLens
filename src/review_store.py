@@ -59,6 +59,26 @@ class ReviewStore:
             details={'file_type': file_type, **(details or {})}
         )
 
+    def reset_demo_data(self, actor_code: str = 'STAFF-DEMO'):
+        """
+        Clears demo reviews, actions, and feedback for demo resets.
+        CRITICAL: The audit_log table is strictly append-only.
+        A DEMO_RESET marker event is logged to preserve audit integrity.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM action_feedback')
+            cursor.execute('DELETE FROM actions')
+            cursor.execute('DELETE FROM reviews')
+            conn.commit()
+        self.log_audit_event(
+            actor_code=actor_code,
+            event_type='DEMO_RESET',
+            student_id='SYSTEM',
+            flag_id=None,
+            details={'action': 'Reset demo coordinator reviews, actions, and feedback'}
+        )
+
     def save_flag(self, flag_result: Dict[str, Any]) -> int:
         student_id = flag_result['student_id']
         as_of_week = flag_result['as_of_week']

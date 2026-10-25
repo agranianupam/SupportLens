@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List
 import pandas as pd
 import streamlit as st
 from src.data_quality import clean_and_validate_data
