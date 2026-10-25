@@ -69,3 +69,101 @@ def create_missing_stress_chart(stress_df: pd.DataFrame) -> go.Figure:
     fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['alert_burden_pct'], mode='lines+markers', name='Alert Burden (%)', line=dict(color='#F59E0B', width=2, dash='dash')))
     fig.update_layout(title='Model & Rules Stability vs. Injected Missingness', xaxis=dict(title='Injected Data Missingness (%)', ticksuffix='%'), yaxis=dict(title='Performance (%)', range=[0, 105]), margin=dict(l=40, r=20, t=40, b=40), height=320, template='plotly_white', legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
     return fig
+
+
+def create_multiseed_box_plot(detailed_df: pd.DataFrame) -> go.Figure:
+    fig = px.box(
+        detailed_df,
+        x='Method',
+        y='F1 Score',
+        color='Method',
+        points='all',
+        title='F1 Score Distribution Across 5 Random Seeds',
+    )
+    fig.update_layout(
+        showlegend=False,
+        yaxis=dict(title='F1 Score', range=[0.0, 1.05]),
+        margin=dict(l=40, r=20, t=40, b=40),
+        height=340,
+        template='plotly_white',
+    )
+    return fig
+
+
+def create_earliness_histogram(earliness_records: List[Dict[str, Any]]) -> go.Figure:
+    valid_rel = [
+        r['relative_earliness']
+        for r in earliness_records
+        if r.get('relative_earliness') is not None
+    ]
+    fig = go.Figure()
+    if valid_rel:
+        fig.add_trace(
+            go.Histogram(
+                x=valid_rel,
+                nbinsx=10,
+                marker_color='#3B82F6',
+                opacity=0.85,
+            )
+        )
+        fig.add_vline(
+            x=0,
+            line_dash='dash',
+            line_color='#EF4444',
+            annotation_text='Decline Start',
+            annotation_position='top right',
+        )
+    fig.update_layout(
+        title='Timeliness of Detection: (First Flag Week − Decline Start Week)',
+        xaxis=dict(
+            title='Weeks Relative to Decline Start (Negative = Early, 0 = Immediate, Positive = Weeks After)',
+            dtick=1,
+        ),
+        yaxis=dict(title='Student Count'),
+        margin=dict(l=40, r=20, t=40, b=40),
+        height=300,
+        template='plotly_white',
+    )
+    return fig
+
+
+def create_threshold_sensitivity_chart(sensitivity_df: pd.DataFrame) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=sensitivity_df['Delta (%)'],
+            y=sensitivity_df['F1 Score'] * 100,
+            mode='lines+markers',
+            name='F1 Score (%)',
+            line=dict(color='#2563EB', width=2.5),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=sensitivity_df['Delta (%)'],
+            y=sensitivity_df['Recall'] * 100,
+            mode='lines+markers',
+            name='Recall (%)',
+            line=dict(color='#10B981', width=2.5),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=sensitivity_df['Delta (%)'],
+            y=sensitivity_df['Alert Burden (%)'],
+            mode='lines+markers',
+            name='Alert Burden (%)',
+            line=dict(color='#F59E0B', width=2, dash='dash'),
+        )
+    )
+    fig.update_layout(
+        title='Metric Stability Across ±20% Threshold Variations',
+        xaxis=dict(title='Threshold Delta from Baseline (%)'),
+        yaxis=dict(title='Percentage (%)', range=[0, 105]),
+        margin=dict(l=40, r=20, t=40, b=40),
+        height=320,
+        template='plotly_white',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+    )
+    return fig
+

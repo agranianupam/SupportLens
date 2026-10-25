@@ -38,6 +38,10 @@ thresholds:
       att_missing: 0.40
       quiz_missing: 0.30
       assignment_unknown: 0.30
+  persistence:
+    enabled: true
+    window_weeks: 3
+    required_count: 2
 
 rules:
   A1:

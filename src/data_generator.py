@@ -23,15 +23,31 @@ def generate_synthetic_data(seed: int=42, output_dir: str='data'):
     students_df = pd.DataFrame({'student_id': student_ids, 'archetype': archetype_list, 'cohort_group': cohort_groups, 'study_mode': study_modes, 'prior_support_flag': prior_support})
     students_df.to_csv(out_path / 'students.csv', index=False)
     needs_support = []
+    decline_start_weeks = []
     for idx, row in students_df.iterrows():
         arch = row['archetype']
-        if arch in ['gradual_decliner', 'chronic_low', 'sudden_dropper']:
+        if arch == 'gradual_decliner':
             needs_support.append(1)
+            decline_start_weeks.append(float(ARCHETYPES['gradual_decliner'].get('decline_start', 4)))
+        elif arch == 'chronic_low':
+            needs_support.append(1)
+            decline_start_weeks.append(1.0)
+        elif arch == 'sudden_dropper':
+            needs_support.append(1)
+            decline_start_weeks.append(float(ARCHETYPES['sudden_dropper'].get('drop_week', 8)))
         elif arch in ['steady_performer', 'strong_irregular', 'recovering']:
             needs_support.append(0)
+            decline_start_weeks.append(np.nan)
         else:
-            needs_support.append(1 if np.random.rand() < 0.2 else 0)
-    ground_truth_df = pd.DataFrame({'student_id': student_ids, 'archetype': archetype_list, 'needs_support': needs_support})
+            ns = 1 if np.random.rand() < 0.2 else 0
+            needs_support.append(ns)
+            decline_start_weeks.append(5.0 if ns == 1 else np.nan)
+    ground_truth_df = pd.DataFrame({
+        'student_id': student_ids,
+        'archetype': archetype_list,
+        'needs_support': needs_support,
+        'decline_start_week': decline_start_weeks
+    })
     ground_truth_df.to_csv(out_path / 'ground_truth_support_need.csv', index=False)
     weeks = list(range(1, 13))
     quiz_weeks = {2, 3, 5, 6, 8, 9, 11, 12}

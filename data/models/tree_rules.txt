@@ -1,16 +1,16 @@
-|--- att_mean_overall <= -0.06
-|   |--- quiz_mean_overall <= 0.91
-|   |   |--- att_trend <= 1.35
+|--- low_att_streak <= -0.13
+|   |--- quiz_mean_recent <= -0.45
+|   |   |--- quiz_mean_overall <= -0.43
+|   |   |   |--- class: 0
+|   |   |--- quiz_mean_overall >  -0.43
 |   |   |   |--- class: 1
-|   |   |--- att_trend >  1.35
-|   |   |   |--- class: 0
-|   |--- quiz_mean_overall >  0.91
-|   |   |--- att_mean_recent <= -1.04
-|   |   |   |--- class: 0
-|   |   |--- att_mean_recent >  -1.04
-|   |   |   |--- class: 0
-|--- att_mean_overall >  -0.06
-|   |--- att_mean_overall <= -0.04
+|   |--- quiz_mean_recent >  -0.45
 |   |   |--- class: 0
-|   |--- att_mean_overall >  -0.04
+|--- low_att_streak >  -0.13
+|   |--- quiz_trend <= 0.34
+|   |   |--- att_missing_rate <= -0.13
+|   |   |   |--- class: 1
+|   |   |--- att_missing_rate >  -0.13
+|   |   |   |--- class: 1
+|   |--- quiz_trend >  0.34
 |   |   |--- class: 0

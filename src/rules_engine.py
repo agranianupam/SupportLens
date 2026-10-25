@@ -14,14 +14,23 @@ def load_config(config_path: Optional[Path]=None) -> Dict[str, Any]:
 
 class RulesEngine:
 
-    def __init__(self, config: Optional[Dict[str, Any]]=None):
+    def __init__(self, config: Optional[Dict[str, Any]]=None, config_override: Optional[Dict[str, Any]]=None):
         self.config = config or load_config()
+        if config_override:
+            # Deep merge config override if provided
+            for k, v in config_override.items():
+                if isinstance(v, dict) and k in self.config and isinstance(self.config[k], dict):
+                    self.config[k].update(v)
+                else:
+                    self.config[k] = v
+        self.default_override = config_override or {}
         self.thresholds = self.config.get('thresholds', {})
         self.rules_cfg = self.config.get('rules', {})
         self.mitigating_cfg = self.config.get('mitigating_rules', {})
         self.levels_cfg = self.config.get('scoring_levels', {})
 
-    def evaluate_student(self, features: Dict[str, Any], historical_scores: Optional[List[int]]=None, custom_thresholds: Optional[Dict[str, Any]]=None) -> Dict[str, Any]:
+    def evaluate_student(self, features: Dict[str, Any], historical_scores: Optional[List[int]]=None, custom_thresholds: Optional[Dict[str, Any]]=None, config_override: Optional[Dict[str, Any]]=None) -> Dict[str, Any]:
+        cfg_ovr = {**self.default_override, **(config_override or {})}
         th = self.thresholds.copy()
         if custom_thresholds:
             for cat, vals in custom_thresholds.items():
@@ -126,32 +135,41 @@ class RulesEngine:
                 fired_rules.append({'id': 'Q4', 'category': 'Assessment', 'description': f'Quiz participation rate ({q_part * 100:.0f}%) is under {quiz_part_cutoff * 100:.0f}%', 'observed_value': q_part, 'threshold': quiz_part_cutoff, 'points': 1})
                 raw_score += 1
                 categories.add('Assessment Concern')
-        active_concerns = {'Attendance Concern', 'Submission Concern', 'Assessment Concern'}
-        if active_concerns.issubset(categories):
-            fired_rules.append({'id': 'C1', 'category': 'Engagement Drop', 'description': 'Multi-signal concern: Attendance, Submission, and Assessment challenges all present', 'observed_value': 'All 3 active', 'threshold': 'All 3 active', 'points': 2})
-            raw_score += 2
-            categories.add('Engagement Drop (Compound)')
-        att_drop_val = features.get('att_drop_from_baseline')
-        miss_count_val = features.get('missing_count_recent', 0)
-        c2_triggered = False
-        if att_drop_val is not None and (not np.isnan(att_drop_val)):
-            if att_drop_val >= sudden_drop_cutoff and miss_count_val >= 2:
-                c2_triggered = True
-                fired_rules.append({'id': 'C2', 'category': 'Engagement Drop', 'description': f'Sudden change: attendance dropped {att_drop_val:.1f} pts from baseline with {miss_count_val} missed assignments', 'observed_value': f'drop={att_drop_val:.1f}, missing={miss_count_val}', 'threshold': f'drop>={sudden_drop_cutoff}, missing>=2', 'points': 2})
+        if not cfg_ovr.get('disable_compound', False):
+            active_concerns = {'Attendance Concern', 'Submission Concern', 'Assessment Concern'}
+            if active_concerns.issubset(categories):
+                fired_rules.append({'id': 'C1', 'category': 'Engagement Drop', 'description': 'Multi-signal concern: Attendance, Submission, and Assessment challenges all present', 'observed_value': 'All 3 active', 'threshold': 'All 3 active', 'points': 2})
                 raw_score += 2
                 categories.add('Engagement Drop (Compound)')
-        q_recent_val = features.get('quiz_mean_recent')
-        if q_recent_val is not None and (not np.isnan(q_recent_val)):
-            if q_recent_val >= high_quiz_mitigation and miss_count_val == 0:
-                mitigating_rules.append({'id': 'M1', 'category': 'Mitigating', 'description': f'Strong quiz mastery ({q_recent_val:.1f}%) with on-time submissions offsets low attendance', 'points': -2})
-                raw_score = max(0, raw_score - 2)
-        att_trend_val = features.get('att_trend')
-        quiz_trend_val = features.get('quiz_trend')
-        if att_trend_val is not None and quiz_trend_val is not None:
-            if not np.isnan(att_trend_val) and (not np.isnan(quiz_trend_val)):
-                if att_trend_val > att_trend_recovery and quiz_trend_val > quiz_trend_recovery:
-                    mitigating_rules.append({'id': 'M2', 'category': 'Mitigating', 'description': f'Positive recovery: attendance (+{att_trend_val:.1f}/wk) and quizzes (+{quiz_trend_val:.1f}/wk) both improving', 'points': -2})
+            att_drop_val = features.get('att_drop_from_baseline')
+            miss_count_val = features.get('missing_count_recent', 0)
+            c2_triggered = False
+            if att_drop_val is not None and (not np.isnan(att_drop_val)):
+                if att_drop_val >= sudden_drop_cutoff and miss_count_val >= 2:
+                    c2_triggered = True
+                    fired_rules.append({'id': 'C2', 'category': 'Engagement Drop', 'description': f'Sudden change: attendance dropped {att_drop_val:.1f} pts from baseline with {miss_count_val} missed assignments', 'observed_value': f'drop={att_drop_val:.1f}, missing={miss_count_val}', 'threshold': f'drop>={sudden_drop_cutoff}, missing>=2', 'points': 2})
+                    raw_score += 2
+                    categories.add('Engagement Drop (Compound)')
+        else:
+            c2_triggered = False
+
+        if not cfg_ovr.get('disable_m1', False):
+            q_recent_val = features.get('quiz_mean_recent')
+            miss_count_val = features.get('missing_count_recent', 0)
+            if q_recent_val is not None and (not np.isnan(q_recent_val)):
+                if q_recent_val >= high_quiz_mitigation and miss_count_val == 0:
+                    mitigating_rules.append({'id': 'M1', 'category': 'Mitigating', 'description': f'Strong quiz mastery ({q_recent_val:.1f}%) with on-time submissions offsets low attendance', 'points': -2})
                     raw_score = max(0, raw_score - 2)
+
+        if not cfg_ovr.get('disable_m2', False):
+            att_trend_val = features.get('att_trend')
+            quiz_trend_val = features.get('quiz_trend')
+            if att_trend_val is not None and quiz_trend_val is not None:
+                if not np.isnan(att_trend_val) and (not np.isnan(quiz_trend_val)):
+                    if att_trend_val > att_trend_recovery and quiz_trend_val > quiz_trend_recovery:
+                        mitigating_rules.append({'id': 'M2', 'category': 'Mitigating', 'description': f'Positive recovery: attendance (+{att_trend_val:.1f}/wk) and quizzes (+{quiz_trend_val:.1f}/wk) both improving', 'points': -2})
+                        raw_score = max(0, raw_score - 2)
+
         if raw_score <= 2:
             base_level = 'On Track'
         elif raw_score <= 4:
@@ -160,14 +178,27 @@ class RulesEngine:
             base_level = 'Suggest Outreach'
         else:
             base_level = 'Priority Check-in'
+
+        persist_cfg = th.get('persistence', {})
+        persistence_enabled = persist_cfg.get('enabled', True) and not cfg_ovr.get('disable_persistence', False)
+        persist_window = persist_cfg.get('window_weeks', 3)
+        persist_required = persist_cfg.get('required_count', 2)
         persistence_applied = False
+        persistence_note = "Single snapshot evaluation"
+
         if base_level in ['Suggest Outreach', 'Priority Check-in'] and (not c2_triggered):
-            if historical_scores is not None and len(historical_scores) >= 2:
-                recent_scores = historical_scores[-2:] + [raw_score]
+            if persistence_enabled and historical_scores is not None and len(historical_scores) >= (persist_window - 1):
+                recent_scores = historical_scores[-(persist_window - 1):] + [raw_score]
                 high_concern_count = sum((1 for s in recent_scores if s >= 5))
-                if high_concern_count < 2:
+                if high_concern_count < persist_required:
                     base_level = 'Monitor'
                     persistence_applied = True
+                    persistence_note = f"Watching: single-week signal (high concern in {high_concern_count} of last {len(recent_scores)} snapshots; {persist_required} required)"
+                else:
+                    persistence_note = f"Concern confirmed in {high_concern_count} of last {len(recent_scores)} snapshots"
+            elif persistence_enabled and historical_scores is not None:
+                persistence_note = f"Concern present (early snapshot history: {len(historical_scores) + 1} weeks observed)"
+
         data_conf_level = features.get('data_confidence_level', 'High')
         needs_manual_check = False
         if data_conf_level == 'Low' and raw_score >= 3:
@@ -177,14 +208,29 @@ class RulesEngine:
         if features.get('att_insufficient') and features.get('quiz_insufficient'):
             base_level = 'Insufficient Data'
             needs_manual_check = True
-        return {'student_id': features.get('student_id'), 'as_of_week': features.get('as_of_week'), 'support_level': base_level, 'score': raw_score, 'categories': sorted(list(categories)) if categories else ['On Track'], 'fired_rules': fired_rules, 'mitigating_rules': mitigating_rules, 'abstained_rules': abstained_rules, 'data_confidence': data_conf_level, 'data_confidence_score': features.get('data_confidence_score', 1.0), 'needs_manual_check': needs_manual_check, 'persistence_applied': persistence_applied}
 
-    def score_all_students(self, features_df: pd.DataFrame, historical_snapshots: Optional[Dict[str, List[int]]]=None, custom_thresholds: Optional[Dict[str, Any]]=None) -> List[Dict[str, Any]]:
+        return {
+            'student_id': features.get('student_id'),
+            'as_of_week': features.get('as_of_week'),
+            'support_level': base_level,
+            'score': raw_score,
+            'categories': sorted(list(categories)) if categories else ['On Track'],
+            'fired_rules': fired_rules,
+            'mitigating_rules': mitigating_rules,
+            'abstained_rules': abstained_rules,
+            'data_confidence': data_conf_level,
+            'data_confidence_score': features.get('data_confidence_score', 1.0),
+            'needs_manual_check': needs_manual_check,
+            'persistence_applied': persistence_applied,
+            'persistence_note': persistence_note
+        }
+
+    def score_all_students(self, features_df: pd.DataFrame, historical_snapshots: Optional[Dict[str, List[int]]]=None, custom_thresholds: Optional[Dict[str, Any]]=None, config_override: Optional[Dict[str, Any]]=None) -> List[Dict[str, Any]]:
         results = []
         for _, row in features_df.iterrows():
             feat = row.to_dict()
             s_id = feat.get('student_id')
             hist = historical_snapshots.get(s_id) if historical_snapshots else None
-            res = self.evaluate_student(feat, historical_scores=hist, custom_thresholds=custom_thresholds)
+            res = self.evaluate_student(feat, historical_scores=hist, custom_thresholds=custom_thresholds, config_override=config_override)
             results.append(res)
         return results
