@@ -1,15 +1,14 @@
 import pytest
 import pandas as pd
 import numpy as np
-from app.data_loader import get_cached_features, get_cohort_snapshot
+from app.data_loader import get_cohort_snapshot
 from src.archetypes import select_dynamic_archetypes
 
 
 def test_archetypes_return_structure_and_distinctness():
     """Verify select_dynamic_archetypes returns expected keys and distinct student IDs."""
     for w in range(4, 13):
-        f_df = get_cached_features(w)
-        _, records = get_cohort_snapshot(w)
+        f_df, records = get_cohort_snapshot(w)
         results = select_dynamic_archetypes(w, f_df, records)
 
         expected_keys = {'decliner', 'strong_irregular', 'data_gap', 'recovering'}
@@ -22,12 +21,10 @@ def test_archetypes_return_structure_and_distinctness():
 
 def test_archetypes_zero_lookahead():
     """Ensure dynamic selection at earlier weeks never relies on future data."""
-    f_w4 = get_cached_features(4)
-    _, recs_w4 = get_cohort_snapshot(4)
+    f_w4, recs_w4 = get_cohort_snapshot(4)
     res_w4 = select_dynamic_archetypes(4, f_w4, recs_w4)
 
-    f_w10 = get_cached_features(10)
-    _, recs_w10 = get_cohort_snapshot(10)
+    f_w10, recs_w10 = get_cohort_snapshot(10)
     res_w10 = select_dynamic_archetypes(10, f_w10, recs_w10)
 
     # Week 4 candidates must be computed strictly from week 4 features
@@ -37,8 +34,7 @@ def test_archetypes_zero_lookahead():
 
 def test_archetypes_deterministic_ranking():
     """Ensure repeatedly running selection on the same week yields identical results."""
-    f_df = get_cached_features(8)
-    _, records = get_cohort_snapshot(8)
+    f_df, records = get_cohort_snapshot(8)
     res1 = select_dynamic_archetypes(8, f_df, records)
     res2 = select_dynamic_archetypes(8, f_df, records)
 
@@ -73,8 +69,7 @@ def test_home_page_intro_paragraph_removed():
 
 def test_simplified_card_descriptions():
     """Verify that card descriptions use friendly, plain-English wording without jargon."""
-    f_df = get_cached_features(10)
-    _, records = get_cohort_snapshot(10)
+    f_df, records = get_cohort_snapshot(10)
     res = select_dynamic_archetypes(10, f_df, records)
 
     # Decliner text check

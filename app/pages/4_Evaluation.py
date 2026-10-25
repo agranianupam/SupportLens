@@ -31,12 +31,15 @@ st.markdown(
     'and threshold sensitivity analysis.'
 )
 
-from app.data_loader import load_raw_data, get_cohort_snapshot, get_ml_system, get_cached_features
+students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
+features_df, cohort_records = get_cohort_snapshot(10)
+ml = get_ml_system()
+engine = RulesEngine()
 
 @st.cache_data
 def get_cached_evaluation_results(as_of_week: int = 10):
     s_df, c_weekly, gt_df, _ = load_raw_data()
-    f_df = get_cached_features(as_of_week)
+    f_df, _ = get_cohort_snapshot(as_of_week)
     ml_sys = get_ml_system()
     r_engine = RulesEngine()
     return evaluate_snapshot(
