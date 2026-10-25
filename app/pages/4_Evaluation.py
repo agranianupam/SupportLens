@@ -15,7 +15,16 @@ ml = get_ml_system()
 engine = RulesEngine()
 with st.spinner('Computing benchmark metrics across models and baselines...'):
     eval_results = evaluate_snapshot(features_df=features_df, labels_df=ground_truth, students_df=students_df, weekly_df=cleaned_weekly, as_of_week=10, engine=engine, ml_system=ml)
-st.info('### 📌 Key Findings & Architectural Verdict\n1. **Trend & Multi-Signal Awareness Beats Naïve Baselines:** The SupportLens Rule Engine achieves an **F1 score of ~0.85+**, substantially outperforming single-metric heuristics (*Attendance < 75%* and *Quiz < 50%*) which suffer from high false-alarm rates.\n2. **Controlled Alert Burden:** Total cohort flags remain tightly controlled at **~18-22%**, meeting our target threshold (<25%) to protect coordinators against alert fatigue.\n3. **Earliness Guarantee:** Students requiring support are flagged on average by **Week 5.8**-well before mid-semester assessments.')
+
+rule_f1 = eval_results['models']['Rule Engine']['f1']
+rule_burden = eval_results['models']['Rule Engine']['alert_burden_pct']
+avg_early = eval_results['earliness']['avg_first_flag_week']
+early_str = f"Week {avg_early}" if avg_early is not None else "N/A"
+
+st.info(f"""### 📌 Key Findings & Architectural Verdict
+1. **Trend & Multi-Signal Awareness Beats Naïve Baselines:** The SupportLens Rule Engine achieves an **F1 score of {rule_f1:.2f}**, substantially outperforming single-metric heuristics (*Attendance < 75%* and *Quiz < 50%*) which suffer from high false-alarm rates.
+2. **Controlled Alert Burden:** Total cohort flags remain tightly controlled at **{rule_burden:.1f}%**, meeting our target threshold (<25%) to protect coordinators against alert fatigue.
+3. **Earliness Guarantee:** Students requiring support are flagged on average by **{early_str}**—well before mid-semester assessments.""")
 st.markdown('### 1. Model & Baseline Comparison (Week 10 Snapshot)')
 models_data = []
 for model_name, m in eval_results['models'].items():

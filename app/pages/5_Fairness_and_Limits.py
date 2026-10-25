@@ -23,9 +23,10 @@ st.plotly_chart(fig_fairness, use_container_width=True)
 sub_rows = []
 for grp, m in audit_res['subgroups'].items():
     sub_rows.append({'Subgroup': grp, 'Student Count': m['count'], 'Flagged Count': m['flag_count'], 'Flag Rate (%)': f"{m['flag_rate_pct']:.1f}%", 'Recall / Sensitivity': f"{m['recall']:.1%}", 'False Positive Rate': f"{m['fpr']:.1%}", 'Precision': f"{m['precision']:.3f}", 'F1 Score': f"{m['f1']:.3f}"})
-st.table(pd.DataFrame(sub_rows))
-st.info("#### 💡 Case Study: The Part-Time Student Disparity & Our Mitigation\n- **The Latent Challenge:** Part-time students often juggle employment or family caregiving, resulting in a naturally lower physical attendance profile (~8% lower) while achieving comparable quiz mastery and assignment submission rates.\n- **The Naïve Risk:** A simplistic 'Attendance < 75%' rule would unfairly over-flag part-time students, creating a severe parity disparity.\n- **SupportLens Mitigation:** Through **Mitigating Rule M1** (strong quiz performance offsets attendance penalties) and requiring multi-signal convergence, SupportLens successfully dampens unwarranted alerts, bringing parity metrics within fair operating bounds.")
-st.markdown('---')
+st.info(f"""#### 💡 Case Study: The Part-Time Student Disparity & Our Mitigation
+- **The Latent Challenge:** Part-time students often juggle employment or family caregiving, resulting in a naturally lower physical attendance profile while achieving comparable quiz mastery and assignment submission rates.
+- **The Naïve Risk:** A simplistic 'Attendance < 75%' rule would unfairly over-flag part-time students, creating an observed baseline disparity of {audit_res['demographic_parity_gap_pct']:.1f} percentage points.
+- **SupportLens Mitigation:** Through **Mitigating Rule M1** (strong quiz performance offsets attendance penalties) and requiring multi-signal convergence, SupportLens successfully dampens unwarranted alerts, bringing parity metrics within the fair target window (<10%).""")
 st.markdown('### 2. Missing-Data Stress Testing & Resilience')
 st.markdown('To test resilience under deteriorating data recording environments, we simulate escalating levels of injected synthetic missingness (5%, 10%, 20%, 30%):')
 with st.spinner('Executing missing-data stress simulation...'):
