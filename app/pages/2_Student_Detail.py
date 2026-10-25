@@ -12,7 +12,9 @@ from app.components.badges import support_level_badge, confidence_badge, agreeme
 from app.components.charts import create_student_attendance_chart, create_student_assignment_strip, create_student_quiz_chart
 from app.data_loader import load_raw_data, get_cohort_snapshot, get_review_store
 st.set_page_config(page_title='Student Detail - SupportLens', page_icon='👤', layout='wide')
-as_of_week = st.sidebar.slider('📅 Snapshot Week', min_value=4, max_value=12, value=10, step=1)
+default_week = int(st.session_state.get('snapshot_week', 10))
+as_of_week = st.sidebar.slider('📅 Snapshot Week', min_value=4, max_value=12, value=default_week, step=1)
+st.session_state['snapshot_week'] = as_of_week
 students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
 features_df, cohort_records = get_cohort_snapshot(as_of_week)
 store = get_review_store()

@@ -15,10 +15,12 @@ from app.data_loader import load_raw_data, get_cohort_snapshot, get_review_store
 st.set_page_config(page_title='SupportLens - Academic Early-Warning Dashboard', page_icon='🎓', layout='wide', initial_sidebar_state='expanded')
 st.title('🎓 SupportLens')
 st.subheader('Transparent, Human-in-the-Loop Early-Warning Academic Support Dashboard')
-st.markdown('\n    **SupportLens** enables university course coordinators to identify students who may benefit from proactive, \n    compassionate academic guidance before small hurdles compound into course withdrawal. \n    Operating on interpretable rules cross-checked by transparent machine learning, \n    **the system never makes automated penalties, grades, or disciplinary decisions.** \n    Human review is mandatory, every flag is explainable in plain English, and coordinator decisions always supersede system outputs.\n    ')
+
 st.sidebar.header('⚙️ Global Navigation & Filters')
 demo_mode = st.sidebar.toggle('🎭 Demo Mode', value=True, help='Activates guided walkthrough buttons and archetype inspection')
-as_of_week = st.sidebar.slider('📅 Snapshot Week (Time-Travel)', min_value=4, max_value=12, value=10, step=1)
+default_week = int(st.session_state.get('snapshot_week', 10))
+as_of_week = st.sidebar.slider('📅 Snapshot Week (Time-Travel)', min_value=4, max_value=12, value=default_week, step=1)
+st.session_state['snapshot_week'] = as_of_week
 st.sidebar.caption('Computed strictly as of the selected week with zero look-ahead bias.')
 
 students_df, cleaned_weekly, ground_truth, quality_report = load_raw_data()
@@ -26,33 +28,76 @@ features_df, cohort_records = get_cohort_snapshot(as_of_week)
 store = get_review_store()
 
 if demo_mode:
+    from src.archetypes import select_dynamic_archetypes
+    archetypes = select_dynamic_archetypes(as_of_week, features_df, cohort_records)
+
     st.markdown('### 🎬 Guided Demo: Key Student Archetypes')
     st.caption('Explore curated student profiles demonstrating core ethical safeguard behaviors with a single click.')
     d_col1, d_col2, d_col3, d_col4 = st.columns(4)
+
     with d_col1:
         st.markdown('**1. Gradual Decliner**')
-        st.caption('Notice multi-week attendance & quiz declines triggering Suggest Outreach, verified by the persistence rule.')
-        if st.button('🔎 Inspect S-0084', use_container_width=True, key='demo_s0084'):
-            st.session_state['selected_student_id'] = 'S-0084'
-            st.switch_page('pages/2_Student_Detail.py')
+        arch1 = archetypes.get('decliner')
+        if arch1:
+            st.caption(f"📌 {arch1['badge']}")
+            st.write(arch1['description'])
+            st.markdown(f"**Student:** `{arch1['student_id']}`")
+            if st.button(arch1['inspect_label'], use_container_width=True, key=f"demo_{arch1['student_id']}_{as_of_week}"):
+                st.session_state['selected_student_id'] = arch1['student_id']
+                st.session_state['snapshot_week'] = as_of_week
+                st.switch_page('pages/2_Student_Detail.py')
+        else:
+            st.caption(f"Week {as_of_week}")
+            st.info("No clear match yet.")
+            st.button("No Match Available", disabled=True, use_container_width=True, key=f"demo_none_decl_{as_of_week}")
+
     with d_col2:
         st.markdown('**2. Strong-but-Irregular**')
-        st.caption('False-positive trap: Notice Mitigating Rule M1 protects the student from alert because quiz performance remains high.')
-        if st.button('🔎 Inspect S-0031', use_container_width=True, key='demo_s0031'):
-            st.session_state['selected_student_id'] = 'S-0031'
-            st.switch_page('pages/2_Student_Detail.py')
+        arch2 = archetypes.get('strong_irregular')
+        if arch2:
+            st.caption(f"📌 {arch2['badge']}")
+            st.write(arch2['description'])
+            st.markdown(f"**Student:** `{arch2['student_id']}`")
+            if st.button(arch2['inspect_label'], use_container_width=True, key=f"demo_{arch2['student_id']}_{as_of_week}"):
+                st.session_state['selected_student_id'] = arch2['student_id']
+                st.session_state['snapshot_week'] = as_of_week
+                st.switch_page('pages/2_Student_Detail.py')
+        else:
+            st.caption(f"Week {as_of_week}")
+            st.info("No clear match yet.")
+            st.button("No Match Available", disabled=True, use_container_width=True, key=f"demo_none_si_{as_of_week}")
+
     with d_col3:
         st.markdown('**3. Data-Gap Case**')
-        st.caption("'Missing is never zero': Sparse engagement caps data confidence and triggers caution rather than a punitive flag.")
-        if st.button('🔎 Inspect S-0063', use_container_width=True, key='demo_s0063'):
-            st.session_state['selected_student_id'] = 'S-0063'
-            st.switch_page('pages/2_Student_Detail.py')
+        arch3 = archetypes.get('data_gap')
+        if arch3:
+            st.caption(f"📌 {arch3['badge']}")
+            st.write(arch3['description'])
+            st.markdown(f"**Student:** `{arch3['student_id']}`")
+            if st.button(arch3['inspect_label'], use_container_width=True, key=f"demo_{arch3['student_id']}_{as_of_week}"):
+                st.session_state['selected_student_id'] = arch3['student_id']
+                st.session_state['snapshot_week'] = as_of_week
+                st.switch_page('pages/2_Student_Detail.py')
+        else:
+            st.caption(f"Week {as_of_week}")
+            st.info("No clear match yet.")
+            st.button("No Match Available", disabled=True, use_container_width=True, key=f"demo_none_dg_{as_of_week}")
+
     with d_col4:
         st.markdown('**4. Recovering Student**')
-        st.caption('Notice recent upward trajectory in attendance and quiz pacing avoids escalation, allowing space to self-correct.')
-        if st.button('🔎 Inspect S-0023', use_container_width=True, key='demo_s0023'):
-            st.session_state['selected_student_id'] = 'S-0023'
-            st.switch_page('pages/2_Student_Detail.py')
+        arch4 = archetypes.get('recovering')
+        if arch4:
+            st.caption(f"📌 {arch4['badge']}")
+            st.write(arch4['description'])
+            st.markdown(f"**Student:** `{arch4['student_id']}`")
+            if st.button(arch4['inspect_label'], use_container_width=True, key=f"demo_{arch4['student_id']}_{as_of_week}"):
+                st.session_state['selected_student_id'] = arch4['student_id']
+                st.session_state['snapshot_week'] = as_of_week
+                st.switch_page('pages/2_Student_Detail.py')
+        else:
+            st.caption(f"Week {as_of_week}")
+            st.info("No clear match yet.")
+            st.button("No Match Available", disabled=True, use_container_width=True, key=f"demo_none_rec_{as_of_week}")
             
     with st.expander('🔄 Reset Demo Data (Presentation Control)', expanded=False):
         st.markdown('Clears demo staff reviews, actions, and feedback. **The audit log remains append-only**: a reset marker event will be permanently recorded.')

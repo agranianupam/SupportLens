@@ -15,7 +15,9 @@ st.set_page_config(page_title='Cohort Dashboard - SupportLens', page_icon='👥'
 st.title('👥 Cohort Overview & Support Triage')
 st.markdown('Filter, sort, and inspect all 100 students as of the current snapshot week.')
 st.sidebar.header('🔍 Filters')
-as_of_week = st.sidebar.slider('📅 Snapshot Week', min_value=4, max_value=12, value=10, step=1)
+default_week = int(st.session_state.get('snapshot_week', 10))
+as_of_week = st.sidebar.slider('📅 Snapshot Week', min_value=4, max_value=12, value=default_week, step=1)
+st.session_state['snapshot_week'] = as_of_week
 level_filter = st.sidebar.multiselect('Support Level', options=['Priority Check-in', 'Suggest Outreach', 'Monitor', 'On Track', 'Insufficient Data'], default=['Priority Check-in', 'Suggest Outreach', 'Monitor', 'On Track', 'Insufficient Data'])
 conf_filter = st.sidebar.multiselect('Data Confidence', options=['High', 'Medium', 'Low'], default=['High', 'Medium', 'Low'])
 search_id = st.sidebar.text_input('🔎 Search Student ID', placeholder='e.g. S-0042').strip().upper()
