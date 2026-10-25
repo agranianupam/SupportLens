@@ -6,7 +6,7 @@ from src.data_quality import clean_and_validate_data
 from src.features import compute_features
 from src.rules_engine import RulesEngine, load_config
 from src.ml_model import SupportLensML, compute_agreement
-from src.review_store import ReviewStore
+from src.review_store import ReviewStore, format_to_ist
 from src.explain import generate_explanation
 
 @st.cache_data
@@ -17,9 +17,11 @@ def load_raw_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str,
     cleaned_weekly_df, quality_report = clean_and_validate_data(weekly_raw_df, students_df)
     return (students_df, cleaned_weekly_df, ground_truth_df, quality_report)
 
-@st.cache_resource
 def get_review_store() -> ReviewStore:
-    return ReviewStore()
+    import importlib
+    import src.review_store
+    importlib.reload(src.review_store)
+    return src.review_store.ReviewStore()
 
 @st.cache_resource
 def get_ml_system() -> SupportLensML:
@@ -66,11 +68,20 @@ def get_cohort_snapshot(as_of_week: int, custom_thresholds: Dict[str, Any]=None)
     ml_dict = ml_preds.set_index('student_id').to_dict(orient='index')
 
     # Batch save flags in a single transaction (avoids 100 separate queries)
-    flag_ids = store.save_flags_batch(flag_results, as_of_week)
+    if hasattr(store, 'save_flags_batch'):
+        flag_ids = store.save_flags_batch(flag_results, as_of_week)
+    else:
+        flag_ids = {r['student_id']: store.save_flag(r) for r in flag_results}
 
     # Batch lookup review statuses in a single query (avoids 100 separate queries)
     system_levels = {r['student_id']: r['support_level'] for r in flag_results}
-    effective_statuses = store.get_all_effective_student_statuses(as_of_week, system_levels)
+    if hasattr(store, 'get_all_effective_student_statuses'):
+        effective_statuses = store.get_all_effective_student_statuses(as_of_week, system_levels)
+    else:
+        effective_statuses = {
+            s_id: store.get_effective_student_status(s_id, lvl, as_of_week)
+            for s_id, lvl in system_levels.items()
+        }
 
     cohort_records = []
     meta_dict = students_df.set_index('student_id').to_dict(orient='index')

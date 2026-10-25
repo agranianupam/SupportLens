@@ -9,7 +9,7 @@ import streamlit as st
 import pandas as pd
 import json
 from app.components.guardrails import render_guardrails_banner, render_footer
-from app.data_loader import get_review_store
+from app.data_loader import get_review_store, format_to_ist
 st.set_page_config(page_title='Audit Log - SupportLens', page_icon='📜', layout='wide')
 st.title('📜 Immutable Audit Log & Accountability Register')
 st.markdown('To ensure accountability and transparency, every automated scoring event, staff review decision, level override, and supportive action is permanently recorded in an append-only ledger.')
@@ -29,7 +29,15 @@ if raw_logs:
     for l in raw_logs:
         details_obj = json.loads(l['details_json'])
         details_summary = ', '.join([f'{k}: {v}' for k, v in details_obj.items()])
-        display_rows.append({'Log ID': l['log_id'], 'Timestamp (UTC)': l['timestamp'][:19].replace('T', ' '), 'Actor Code': l['actor_code'], 'Event Type': l['event_type'], 'Student ID': l['student_id'], 'Flag ID': l['flag_id'] if l['flag_id'] else '-', 'Event Details': details_summary})
+        display_rows.append({
+            'Log ID': l['log_id'],
+            'Timestamp (IST)': format_to_ist(l['timestamp']),
+            'Actor Code': l['actor_code'],
+            'Event Type': l['event_type'],
+            'Student ID': l['student_id'],
+            'Flag ID': l['flag_id'] if l['flag_id'] else '-',
+            'Event Details': details_summary,
+        })
     df_logs = pd.DataFrame(display_rows)
     st.dataframe(df_logs, use_container_width=True)
     from src.export import generate_audit_log_csv

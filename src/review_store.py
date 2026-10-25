@@ -10,6 +10,26 @@ VALID_REASON_CODES = {'Known circumstance', 'Data error', 'Already supported', '
 VALID_ACTION_STATUSES = {'Planned', 'Done', 'Declined by student', 'No longer needed'}
 VALID_SUPPORT_LEVELS = {'On Track', 'Monitor', 'Suggest Outreach', 'Priority Check-in', 'Insufficient Data'}
 PROHIBITED_DECISIONS = {'penalise', 'fail', 'punish', 'misconduct', 'disciplinary', 'drop student'}
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IST")
+
+def get_current_timestamp() -> str:
+    """Return current timestamp in Indian Standard Time (IST)."""
+    return datetime.datetime.now(IST).isoformat()
+
+def format_to_ist(ts: Optional[str]) -> str:
+    """Convert any UTC/ISO timestamp to a formatted Indian Standard Time (IST) string."""
+    if not ts:
+        return "-"
+    try:
+        clean = str(ts).strip()
+        if clean.endswith("Z"):
+            clean = clean[:-1] + "+00:00"
+        dt = datetime.datetime.fromisoformat(clean)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S IST")
+    except Exception:
+        return str(ts)[:19].replace("T", " ") + " IST"
 
 class ReviewStore:
 
@@ -59,7 +79,7 @@ class ReviewStore:
             conn.commit()
 
     def log_audit_event(self, actor_code: str, event_type: str, student_id: str, flag_id: Optional[int], details: Dict[str, Any]):
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        timestamp = get_current_timestamp()
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('\n                INSERT INTO audit_log (timestamp, actor_code, event_type, student_id, flag_id, details_json)\n                VALUES (?, ?, ?, ?, ?, ?)\n                ', (timestamp, actor_code, event_type, student_id, flag_id, json.dumps(details)))
@@ -105,7 +125,7 @@ class ReviewStore:
             'fired_rules': [r['id'] if isinstance(r, dict) else r for r in flag_result.get('fired_rules', [])],
         }
         explanation_json = json.dumps(expl_payload)
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = get_current_timestamp()
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -137,7 +157,7 @@ class ReviewStore:
         Saves or updates cohort flags in a single SQLite transaction.
         Avoids 100 individual connections and queries during snapshot generation.
         """
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = get_current_timestamp()
         flag_ids = {}
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -190,7 +210,7 @@ class ReviewStore:
         if decision == 'Dismissed':
             if not reason_code:
                 raise ValueError('A reason code is required when dismissing a flag as a false positive.')
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = get_current_timestamp()
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('\n                INSERT INTO reviews (flag_id, student_id, reviewer_code, decision, corrected_level, reason_code, reason_note, reviewed_at)\n                VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n                ', (flag_id, student_id, reviewer_code, decision, corrected_level, reason_code, reason_note, now))
@@ -205,7 +225,7 @@ class ReviewStore:
             raise ValueError(f"Reviewer code must be an anonymised staff identifier (e.g. 'STAFF-01'), got '{reviewer_code}'.")
         if status not in VALID_ACTION_STATUSES:
             raise ValueError(f"Invalid status '{status}'. Allowed: {VALID_ACTION_STATUSES}")
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = get_current_timestamp()
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('\n                INSERT INTO actions (flag_id, student_id, action_type, action_note, planned_date, status, created_by, created_at)\n                VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n                ', (flag_id, student_id, action_type, action_note, planned_date, status, reviewer_code, now))
@@ -554,7 +574,7 @@ class ReviewStore:
                     outcome,
                     staff_note.strip(),
                     recorded_by,
-                    datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    get_current_timestamp(),
                 ),
             )
             conn.commit()

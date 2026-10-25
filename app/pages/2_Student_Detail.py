@@ -10,7 +10,7 @@ import pandas as pd
 from app.components.guardrails import render_guardrails_banner, render_footer
 from app.components.badges import support_level_badge, confidence_badge, agreement_badge, review_status_badge
 from app.components.charts import create_student_attendance_chart, create_student_assignment_strip, create_student_quiz_chart
-from app.data_loader import load_raw_data, get_cohort_snapshot, get_review_store
+from app.data_loader import load_raw_data, get_cohort_snapshot, get_review_store, format_to_ist
 st.set_page_config(page_title='Student Detail - SupportLens', page_icon='👤', layout='wide')
 default_week = int(st.session_state.get('snapshot_week', 10))
 as_of_week = st.sidebar.slider('📅 Snapshot Week', min_value=4, max_value=12, value=default_week, step=1)
@@ -160,6 +160,8 @@ with h_tab2:
         )
 
         actions_df = pd.DataFrame(hist['actions'])
+        if 'created_at' in actions_df.columns:
+            actions_df['created_at'] = actions_df['created_at'].apply(format_to_ist)
         st.dataframe(
             actions_df[
                 [
@@ -170,7 +172,7 @@ with h_tab2:
                     'status',
                     'action_note',
                 ]
-            ],
+            ].rename(columns={'created_at': 'Created (IST)'}),
             use_container_width=True,
             hide_index=True,
         )
@@ -300,7 +302,13 @@ with h_tab2:
 
 with h_tab3:
     if hist['flags']:
-        st.table(pd.DataFrame(hist['flags'])[['as_of_week', 'support_level', 'score', 'categories', 'created_at']])
+        flags_df = pd.DataFrame(hist['flags'])
+        if 'created_at' in flags_df.columns:
+            flags_df['created_at'] = flags_df['created_at'].apply(format_to_ist)
+        flags_display = flags_df[['as_of_week', 'support_level', 'score', 'categories', 'created_at']].rename(
+            columns={'created_at': 'Created (IST)'}
+        )
+        st.table(flags_display)
     else:
         st.caption('No historical flags recorded.')
 
