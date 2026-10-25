@@ -32,21 +32,25 @@ st.markdown(
     'and threshold sensitivity analysis.'
 )
 
-students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
-features_df, cohort_records = get_cohort_snapshot(10)
-ml = get_ml_system()
-engine = RulesEngine()
+from app.data_loader import load_raw_data, get_cohort_snapshot, get_ml_system, get_cached_features
 
-with st.spinner('Computing benchmark metrics across models and baselines...'):
-    eval_results = evaluate_snapshot(
-        features_df=features_df,
-        labels_df=ground_truth,
-        students_df=students_df,
-        weekly_df=cleaned_weekly,
-        as_of_week=10,
-        engine=engine,
-        ml_system=ml,
+@st.cache_data
+def get_cached_evaluation_results(as_of_week: int = 10):
+    s_df, c_weekly, gt_df, _ = load_raw_data()
+    f_df = get_cached_features(as_of_week)
+    ml_sys = get_ml_system()
+    r_engine = RulesEngine()
+    return evaluate_snapshot(
+        features_df=f_df,
+        labels_df=gt_df,
+        students_df=s_df,
+        weekly_df=c_weekly,
+        as_of_week=as_of_week,
+        engine=r_engine,
+        ml_system=ml_sys,
     )
+
+eval_results = get_cached_evaluation_results(10)
 
 rule_f1 = eval_results['models']['Rule Engine']['f1']
 rule_burden = eval_results['models']['Rule Engine']['alert_burden_pct']

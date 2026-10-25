@@ -1,51 +1,53 @@
 import streamlit as st
 
-def inject_aesthetic_black_red_bg():
+def inject_aesthetic_theme():
     st.markdown("""
         <style>
-            /* Main background: aesthetic deep black with subtle crimson ambient radial glow */
+            /* Main background: Pristine, serene mint/cyan/white gradient */
             .stApp {
-                background: radial-gradient(ellipse at 50% 0%, #1c0508 0%, #0c0203 40%, #050102 100%) !important;
+                background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 30%, #F0FDFA 70%, #F8FAFC 100%) !important;
                 background-attachment: fixed !important;
-                color: #F1F5F9 !important;
+                color: #0F172A !important;
             }
 
-            /* Sidebar styling */
+            /* Sidebar: Soft mint-tinted off-white */
             [data-testid="stSidebar"] {
-                background: linear-gradient(180deg, #130305 0%, #080102 100%) !important;
-                border-right: 1px solid rgba(230, 57, 70, 0.22) !important;
+                background: linear-gradient(180deg, #F2FBF9 0%, #FFFFFF 100%) !important;
+                border-right: 1px solid #E6F4F1 !important;
             }
 
-            /* Top header bar */
+            /* Header bar: Ethereal frosted glass */
             [data-testid="stHeader"] {
-                background: rgba(7, 2, 3, 0.75) !important;
+                background: rgba(248, 250, 252, 0.8) !important;
                 backdrop-filter: blur(12px) !important;
             }
 
-            /* Metric cards & expanders with dark glassmorphic styling & subtle red borders */
+            /* Metric cards: Crisp elevated white with subtle teal borders */
             div[data-testid="stMetric"] {
-                background: rgba(22, 6, 9, 0.65) !important;
-                border: 1px solid rgba(230, 57, 70, 0.22) !important;
-                border-radius: 8px !important;
-                padding: 12px 16px !important;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), 0 0 15px rgba(230, 57, 70, 0.05) !important;
+                background: #FFFFFF !important;
+                border: 1px solid rgba(13, 148, 136, 0.16) !important;
+                border-radius: 12px !important;
+                padding: 16px 20px !important;
+                box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02) !important;
             }
 
             div[data-testid="stExpander"] {
-                background: rgba(18, 5, 7, 0.6) !important;
-                border: 1px solid rgba(230, 57, 70, 0.2) !important;
-                border-radius: 8px !important;
+                background: #FFFFFF !important;
+                border: 1px solid rgba(13, 148, 136, 0.18) !important;
+                border-radius: 12px !important;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03) !important;
             }
 
-            /* Tabs with aesthetic crimson active indicators */
+            /* Tabs styling with modern teal active indicator */
             button[data-baseweb="tab"] {
-                color: #94A3B8 !important;
+                color: #64748B !important;
                 font-weight: 500 !important;
             }
 
             button[data-baseweb="tab"][aria-selected="true"] {
-                color: #FF5A68 !important;
-                border-bottom: 2px solid #E63946 !important;
+                color: #0D9488 !important;
+                font-weight: 600 !important;
+                border-bottom: 2px solid #0D9488 !important;
             }
 
             /* Styled scrollbars */
@@ -54,28 +56,28 @@ def inject_aesthetic_black_red_bg():
                 height: 7px;
             }
             ::-webkit-scrollbar-track {
-                background: #080102;
+                background: #F0FDF4;
             }
             ::-webkit-scrollbar-thumb {
-                background: #3B0D13;
+                background: #99F6E4;
                 border-radius: 4px;
             }
             ::-webkit-scrollbar-thumb:hover {
-                background: #E63946;
+                background: #14B8A6;
             }
         </style>
     """, unsafe_allow_html=True)
 
 
 def render_guardrails_banner():
-    inject_aesthetic_black_red_bg()
+    inject_aesthetic_theme()
     st.markdown("""
-        <div style="background: rgba(24, 6, 9, 0.85); border: 1px solid rgba(230, 57, 70, 0.35); border-left: 5px solid #E63946; padding: 14px 18px; border-radius: 6px; margin: 12px 0 20px 0; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 20px rgba(230, 57, 70, 0.1);">
+        <div style="background: linear-gradient(90deg, #ECFDF5 0%, #F0FDFA 100%); border-left: 5px solid #0D9488; border: 1px solid rgba(13, 148, 136, 0.22); border-left-width: 5px; padding: 14px 18px; border-radius: 10px; margin: 12px 0 20px 0; box-shadow: 0 4px 15px rgba(13, 148, 136, 0.06);">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span style="font-size: 1.4rem;">🛡️</span>
                 <div>
-                    <strong style="color: #FF6B7A; font-size: 0.95rem; letter-spacing: 0.4px;">ETHICAL AI GUARDRAIL & HUMAN-IN-THE-LOOP MANDATE</strong><br/>
-                    <span style="color: #E2E8F0; font-size: 0.88rem; line-height: 1.5;">
+                    <strong style="color: #0F766E; font-size: 0.95rem; letter-spacing: 0.3px;">ETHICAL AI GUARDRAIL & HUMAN-IN-THE-LOOP MANDATE</strong><br/>
+                    <span style="color: #334155; font-size: 0.88rem; line-height: 1.5;">
                         This system is an early-warning supportive tool to help course coordinators offer timely academic assistance. 
                         <strong>It never makes grades, penalties, holds, or final academic decisions.</strong> 
                         Human review by an authorised staff member is strictly required before any supportive outreach is initiated.
@@ -89,9 +91,10 @@ def render_guardrails_banner():
 def render_footer():
     st.markdown('---')
     st.markdown("""
-        <div style="text-align: center; color: #94A3B8; font-size: 0.82rem; padding: 12px 0;">
-            🔒 <strong style="color: #CBD5E1;">100% Synthetic Data Demonstration</strong> • No real students, emails, or personal identifiers • 
-            <span style="color: #FF6B7A;">SupportLens Early-Warning Prototype</span> • For Academic Coordinator Decision Support Only
+        <div style="text-align: center; color: #64748B; font-size: 0.82rem; padding: 12px 0;">
+            🔒 <strong style="color: #334155;">100% Synthetic Data Demonstration</strong> • No real students, emails, or personal identifiers • 
+            <span style="color: #0D9488; font-weight: 600;">SupportLens Early-Warning Prototype</span> • For Academic Coordinator Decision Support Only
         </div>
     """, unsafe_allow_html=True)
+
 

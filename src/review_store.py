@@ -108,7 +108,23 @@ class ReviewStore:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('\n                INSERT INTO flags (student_id, as_of_week, support_level, score, categories, explanation_json, created_at)\n                VALUES (?, ?, ?, ?, ?, ?, ?)\n                ON CONFLICT(student_id, as_of_week) DO UPDATE SET\n                    support_level=excluded.support_level,\n                    score=excluded.score,\n                    categories=excluded.categories,\n                    explanation_json=excluded.explanation_json\n                ', (student_id, as_of_week, support_level, score, categories, explanation_json, now))
+            cursor.execute(
+                'SELECT flag_id, support_level, score FROM flags WHERE student_id=? AND as_of_week=?',
+                (student_id, as_of_week)
+            )
+            existing = cursor.fetchone()
+            if existing and existing['support_level'] == support_level and existing['score'] == score:
+                return existing['flag_id']
+
+            cursor.execute('''
+                INSERT INTO flags (student_id, as_of_week, support_level, score, categories, explanation_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(student_id, as_of_week) DO UPDATE SET
+                    support_level=excluded.support_level,
+                    score=excluded.score,
+                    categories=excluded.categories,
+                    explanation_json=excluded.explanation_json
+                ''', (student_id, as_of_week, support_level, score, categories, explanation_json, now))
             conn.commit()
             cursor.execute('SELECT flag_id FROM flags WHERE student_id=? AND as_of_week=?', (student_id, as_of_week))
             row = cursor.fetchone()

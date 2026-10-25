@@ -46,11 +46,11 @@ def create_cohort_weekly_trends(weekly_df: pd.DataFrame, as_of_week: int) -> go.
     due_weeks = df[df['assignment_status'].isin(['Submitted', 'Late', 'Missing'])]
     sub_rate = due_weeks.groupby('week').apply(lambda g: g['assignment_status'].isin(['Submitted', 'Late']).mean() * 100)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=att_avg.index, y=att_avg.values, mode='lines+markers', name='Average Attendance %', line=dict(color='#2563EB', width=2.5)))
-    fig.add_trace(go.Scatter(x=quiz_avg.index, y=quiz_avg.values, mode='lines+markers', name='Average Quiz %', line=dict(color='#7C3AED', width=2.5)))
+    fig.add_trace(go.Scatter(x=att_avg.index, y=att_avg.values, mode='lines+markers', name='Attendance %', line=dict(color='#0D9488', width=2.5), marker=dict(size=6, color='#0F766E')))
     if len(sub_rate) > 0:
-        fig.add_trace(go.Scatter(x=sub_rate.index, y=sub_rate.values, mode='lines+markers', name='Assignment Submission %', line=dict(color='#059669', width=2.5, dash='dot')))
-    fig.update_layout(title='Cohort Engagement Averages Over Semester', xaxis=dict(title='Week', tickmode='linear', tick0=1, dtick=1, range=[0.5, as_of_week + 0.5]), yaxis=dict(title='Percentage (%)', range=[0, 105]), margin=dict(l=40, r=20, t=40, b=40), height=320, template='plotly_white', legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
+        fig.add_trace(go.Scatter(x=sub_rate.index, y=sub_rate.values, mode='lines+markers', name='Assignment Submission %', line=dict(color='#8B5CF6', width=2.5), marker=dict(size=6, color='#7C3AED')))
+    fig.add_trace(go.Scatter(x=quiz_avg.index, y=quiz_avg.values, mode='lines+markers', name='Quiz Score %', line=dict(color='#0284C7', width=2.5), marker=dict(size=6, color='#0369A1')))
+    fig.update_layout(title='Cohort Performance Trends Over Semester', xaxis=dict(title='Week', tickmode='linear', tick0=1, dtick=1, range=[0.5, as_of_week + 0.5]), yaxis=dict(title='Percentage (%)', range=[0, 105]), margin=dict(l=40, r=20, t=40, b=40), height=320, template='plotly_white', paper_bgcolor='rgba(255, 255, 255, 0)', plot_bgcolor='rgba(255, 255, 255, 0)', legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
     return fig
 
 def create_subgroup_fairness_chart(subgroups: Dict[str, Dict[str, Any]], attribute_name: str) -> go.Figure:
