@@ -64,9 +64,10 @@ def create_subgroup_fairness_chart(subgroups: Dict[str, Dict[str, Any]], attribu
 
 def create_missing_stress_chart(stress_df: pd.DataFrame) -> go.Figure:
     fig = go.Figure()
+    fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['f1'] * 100, mode='lines+markers', name='F1 Score (%)', line=dict(color='#3B82F6', width=2.5)))
     fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['recall'] * 100, mode='lines+markers', name='Recall (%)', line=dict(color='#10B981', width=2.5)))
-    fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['precision'] * 100, mode='lines+markers', name='Precision (%)', line=dict(color='#3B82F6', width=2.5)))
     fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['alert_burden_pct'], mode='lines+markers', name='Alert Burden (%)', line=dict(color='#F59E0B', width=2, dash='dash')))
+    fig.update_layout(title='Missing-Data Stress Test: F1, Recall & Alert Burden', xaxis_title='Added Missingness (%)', yaxis=dict(title='Metric (%)', range=[0, 105]), template='plotly_white', height=340, margin=dict(l=40, r=20, t=40, b=40))
     return fig
 
 

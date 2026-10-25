@@ -167,10 +167,10 @@ with h_tab2:
             hide_index=True,
         )
 
-st.markdown("#### Update an Existing Action")
+        st.markdown("#### Update an Existing Action")
 
-action_ids = [int(a['action_id']) for a in hist['actions']]
-selected_action_id = st.selectbox(
+        action_ids = [int(a['action_id']) for a in hist['actions']]
+        selected_action_id = st.selectbox(
             "Select action to update",
             options=action_ids,
             format_func=lambda aid: next(
@@ -181,19 +181,19 @@ selected_action_id = st.selectbox(
             key="followup_action_id",
         )
 
-selected_record = next(
+        selected_record = next(
             a for a in hist['actions']
             if int(a['action_id']) == selected_action_id
         )
 
-valid_statuses = [
+        valid_statuses = [
             'Planned',
             'Done',
             'Declined by student',
             'No longer needed',
         ]
 
-with st.form("update_followup_status_form"):
+        with st.form("update_followup_status_form"):
             new_status = st.selectbox(
                 "New follow-up status",
                 options=valid_statuses,
@@ -222,78 +222,73 @@ with st.form("update_followup_status_form"):
                         st.rerun()
                 except Exception as e:
                     st.error(f"Could not update action: {e}")
-            else:
+
+        st.markdown("#### Follow-up Effectiveness")
+
+        completed_actions = [
+            action
+            for action in hist["actions"]
+            if action["status"] == "Done"
+        ]
+
+        if completed_actions:
+            action_options = {
+                f"Action #{action['action_id']} — {action['action_type']}": action
+                for action in completed_actions
+            }
+
+            selected_label = st.selectbox(
+                "Select a completed action",
+                list(action_options.keys()),
+                key="feedback_action_select",
+            )
+
+            selected_action = action_options[selected_label]
+            existing_feedback = store.get_action_feedback(
+                selected_action["action_id"]
+            )
+
+            with st.form("action_feedback_form"):
+                outcome = st.selectbox(
+                    "How effective was this follow-up?",
+                    ["Helpful", "Partially helpful", "Not helpful"],
+                )
+
+                staff_note = st.text_area(
+                    "Staff note (optional)",
+                    placeholder="Record any observed outcome...",
+                )
+
+                submitted = st.form_submit_button("Save Feedback")
+
+                if submitted:
+                    try:
+                        store.record_action_feedback(
+                            action_id=selected_action["action_id"],
+                            outcome=outcome,
+                            staff_note=staff_note,
+                            recorded_by="STAFF-01",
+                        )
+                        st.success("Follow-up feedback saved.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"Could not save feedback: {exc}")
+
+            if existing_feedback:
                 st.caption(
+                    f"Last recorded by: {existing_feedback['recorded_by']}"
+                )
+                if existing_feedback["staff_note"]:
+                    st.write(existing_feedback["staff_note"])
+        else:
+            st.info(
+                "Mark a follow-up action as Done before recording its effectiveness."
+            )
+    else:
+        st.caption(
             "No follow-up actions recorded yet for this student. "
             "Record an action in the Staff Review panel first."
         )
-st.markdown("#### Follow-up Effectiveness")
-
-completed_actions = [
-                action
-                for action in hist["actions"]
-                if action["status"] == "Done"
-            ]
-
-if completed_actions:
-                action_options = {
-                    f"Action #{action['action_id']} — {action['action_type']}": action
-                    for action in completed_actions
-                }
-
-                selected_label = st.selectbox(
-                    "Select a completed action",
-                    list(action_options.keys()),
-                    key="feedback_action_select",
-                )
-
-                selected_action = action_options[selected_label]
-                existing_feedback = store.get_action_feedback(
-                    selected_action["action_id"]
-                )
-
-                if existing_feedback:
-                    st.caption(
-                        f"Current outcome: {existing_feedback['outcome']}"
-                    )
-
-                with st.form("action_feedback_form"):
-                    outcome = st.selectbox(
-                        "How effective was this follow-up?",
-                        ["Helpful", "Partially helpful", "Not helpful"],
-                    )
-
-                    staff_note = st.text_area(
-                        "Staff note (optional)",
-                        placeholder="Record any observed outcome...",
-                    )
-
-                    submitted = st.form_submit_button("Save Feedback")
-
-                    if submitted:
-                        try:
-                            store.record_action_feedback(
-                                action_id=selected_action["action_id"],
-                                outcome=outcome,
-                                staff_note=staff_note,
-                                recorded_by="STAFF-01",
-                            )
-                            st.success("Follow-up feedback saved.")
-                            st.rerun()
-                        except Exception as exc:
-                            st.error(f"Could not save feedback: {exc}")
-
-                if existing_feedback:
-                    st.caption(
-                        f"Last recorded by: {existing_feedback['recorded_by']}"
-                    )
-                    if existing_feedback["staff_note"]:
-                        st.write(existing_feedback["staff_note"])
-
-                else:
-                   st.info(
-                    "Mark a follow-up action as Done before recording its effectiveness."
-                )
 
 with h_tab3:
         if hist['flags']:

@@ -202,7 +202,7 @@ def evaluate_snapshot(
     )
 
     error_analysis_res = run_error_analysis(
-        features_df=merged, labels_df=labels_df, flag_results=flag_results
+        features_df=features_df, labels_df=labels_df, flag_results=flag_results
     )
 
     ablation_df = run_ablation_study(
@@ -355,7 +355,13 @@ def run_error_analysis(
     labels_df: pd.DataFrame,
     flag_results: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    merged = pd.merge(features_df, labels_df, on='student_id')
+    if 'needs_support' not in features_df.columns:
+        cols_to_merge = [c for c in labels_df.columns if c not in features_df.columns or c == 'student_id']
+        merged = pd.merge(features_df, labels_df[cols_to_merge], on='student_id')
+    else:
+        merged = features_df.copy()
+        if 'archetype' not in merged.columns and 'archetype' in labels_df.columns:
+            merged = pd.merge(merged, labels_df[['student_id', 'archetype']], on='student_id', how='left')
     flag_dict = {r['student_id']: r for r in flag_results}
 
     merged['flag_pred'] = [
@@ -639,6 +645,7 @@ def missingness_stress_test(
     clean_w_base, _ = clean_and_validate_data(weekly_df, students_df)
 
     for lvl in levels:
+        seed_prec = []
         seed_f1 = []
         seed_rec = []
         seed_fpr = []
@@ -670,6 +677,7 @@ def missingness_stress_test(
             ])
             m = compute_binary_metrics(y_true, preds)
 
+            seed_prec.append(m['precision'])
             seed_f1.append(m['f1'])
             seed_rec.append(m['recall'])
             seed_fpr.append(m['false_positive_rate'])
@@ -684,6 +692,7 @@ def missingness_stress_test(
 
         level_records.append({
             'added_missingness_pct': int(lvl * 100),
+            'precision': float(round(np.mean(seed_prec), 3)),
             'f1': float(round(np.mean(seed_f1), 3)),
             'recall': float(round(np.mean(seed_rec), 3)),
             'false_positive_rate': float(round(np.mean(seed_fpr), 3)),
