@@ -8,7 +8,7 @@ if str(ROOT_DIR) not in sys.path:
 import streamlit as st
 import pandas as pd
 import numpy as np
-from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
+from app.components.guardrails import render_guardrails_banner, render_footer
 from app.components.charts import (
     create_multiseed_box_plot,
     create_earliness_histogram,
@@ -23,7 +23,6 @@ from src.evaluation import (
 )
 
 st.set_page_config(page_title='Evaluation - SupportLens', page_icon='🧪', layout='wide')
-apply_page_theme()
 
 st.title('🧪 System Evaluation & Benchmark Analysis')
 st.markdown(

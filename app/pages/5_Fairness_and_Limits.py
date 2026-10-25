@@ -7,7 +7,7 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 import pandas as pd
-from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
+from app.components.guardrails import render_guardrails_banner, render_footer
 from app.components.charts import (
     create_subgroup_fairness_chart,
     create_missing_stress_chart,
@@ -17,7 +17,6 @@ from app.data_loader import load_raw_data, get_cohort_snapshot
 from src.fairness import audit_subgroup_fairness
 from src.evaluation import missingness_stress_test
 st.set_page_config(page_title='Fairness & Limitations - SupportLens', page_icon='⚖️', layout='wide')
-apply_page_theme()
 st.title('⚖️ Algorithmic Fairness, Missing Data & System Limitations')
 st.markdown('SupportLens is built around responsible AI design principles. This page provides empirical verification of subgroup fairness, stresstests missing-data resilience, and documents technical and human limitations.')
 students_df, cleaned_weekly, ground_truth, _ = load_raw_data()

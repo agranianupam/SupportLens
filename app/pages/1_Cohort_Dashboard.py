@@ -7,12 +7,11 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 import pandas as pd
-from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
+from app.components.guardrails import render_guardrails_banner, render_footer
 from app.components.badges import support_level_badge, confidence_badge, agreement_badge, review_status_badge
 from app.data_loader import load_raw_data, get_cohort_snapshot, get_review_store
 from src.export import generate_weekly_summary_csv, generate_cohort_report_markdown
 st.set_page_config(page_title='Cohort Dashboard - SupportLens', page_icon='👥', layout='wide')
-apply_page_theme()
 st.title('👥 Cohort Overview & Support Triage')
 st.markdown('Filter, sort, and inspect all 100 students as of the current snapshot week.')
 st.sidebar.header('🔍 Filters')

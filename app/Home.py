@@ -8,12 +8,11 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 import pandas as pd
-from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
+from app.components.guardrails import render_guardrails_banner, render_footer
 from app.components.badges import support_level_badge, confidence_badge
 from app.components.charts import create_cohort_level_donut, create_cohort_weekly_trends
 from app.data_loader import load_raw_data, get_cohort_snapshot, get_review_store
 st.set_page_config(page_title='SupportLens - Academic Early-Warning Dashboard', page_icon='🎓', layout='wide', initial_sidebar_state='expanded')
-apply_page_theme()
 st.title('🎓 SupportLens')
 st.subheader('Transparent, Human-in-the-Loop Early-Warning Academic Support Dashboard')
 st.markdown('\n    **SupportLens** enables university course coordinators to identify students who may benefit from proactive, \n    compassionate academic guidance before small hurdles compound into course withdrawal. \n    Operating on interpretable rules cross-checked by transparent machine learning, \n    **the system never makes automated penalties, grades, or disciplinary decisions.** \n    Human review is mandatory, every flag is explainable in plain English, and coordinator decisions always supersede system outputs.\n    ')

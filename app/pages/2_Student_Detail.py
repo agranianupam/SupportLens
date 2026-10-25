@@ -7,12 +7,11 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 import pandas as pd
-from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
+from app.components.guardrails import render_guardrails_banner, render_footer
 from app.components.badges import support_level_badge, confidence_badge, agreement_badge, review_status_badge
 from app.components.charts import create_student_attendance_chart, create_student_assignment_strip, create_student_quiz_chart
 from app.data_loader import load_raw_data, get_cohort_snapshot, get_review_store
 st.set_page_config(page_title='Student Detail - SupportLens', page_icon='👤', layout='wide')
-apply_page_theme()
 as_of_week = st.sidebar.slider('📅 Snapshot Week', min_value=4, max_value=12, value=10, step=1)
 students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
 features_df, cohort_records = get_cohort_snapshot(as_of_week)

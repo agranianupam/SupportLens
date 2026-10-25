@@ -8,10 +8,9 @@ if str(ROOT_DIR) not in sys.path:
 import streamlit as st
 import pandas as pd
 import json
-from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
+from app.components.guardrails import render_guardrails_banner, render_footer
 from app.data_loader import get_review_store
 st.set_page_config(page_title='Audit Log - SupportLens', page_icon='📜', layout='wide')
-apply_page_theme()
 st.title('📜 Immutable Audit Log & Accountability Register')
 st.markdown('To ensure accountability and transparency, every automated scoring event, staff review decision, level override, and supportive action is permanently recorded in an append-only ledger.')
 store = get_review_store()

@@ -7,10 +7,9 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 import pandas as pd
-from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
+from app.components.guardrails import render_guardrails_banner, render_footer
 from app.data_loader import get_ml_system
 st.set_page_config(page_title='Feature Glossary - SupportLens', page_icon='📖', layout='wide')
-apply_page_theme()
 st.title('📖 Feature Glossary & Rulebook')
 st.markdown('SupportLens is committed to radical algorithmic transparency. Every feature, threshold, mathematical formula, and rule rationale is fully documented below.')
 tab_features, tab_rules, tab_categories, tab_tree = st.tabs(['📐 Feature Catalog', '⚖️ Rulebook & Thresholds', '🏷️ Support Level Taxonomy', '🌳 Decision Tree If-Then Rules'])
