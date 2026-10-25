@@ -67,8 +67,42 @@ def create_missing_stress_chart(stress_df: pd.DataFrame) -> go.Figure:
     fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['recall'] * 100, mode='lines+markers', name='Recall (%)', line=dict(color='#10B981', width=2.5)))
     fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['precision'] * 100, mode='lines+markers', name='Precision (%)', line=dict(color='#3B82F6', width=2.5)))
     fig.add_trace(go.Scatter(x=stress_df['added_missingness_pct'], y=stress_df['alert_burden_pct'], mode='lines+markers', name='Alert Burden (%)', line=dict(color='#F59E0B', width=2, dash='dash')))
-    fig.update_layout(title='Model & Rules Stability vs. Injected Missingness', xaxis=dict(title='Injected Data Missingness (%)', ticksuffix='%'), yaxis=dict(title='Performance (%)', range=[0, 105]), margin=dict(l=40, r=20, t=40, b=40), height=320, template='plotly_white', legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
     return fig
+
+
+def create_insufficient_data_growth_chart(stress_df: pd.DataFrame) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            x=stress_df['added_missingness_pct'],
+            y=stress_df['insufficient_data_pct'],
+            name='Insufficient Data Share (%)',
+            marker_color='#9CA3AF',
+        )
+    )
+    if 'avg_data_confidence' in stress_df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=stress_df['added_missingness_pct'],
+                y=stress_df['avg_data_confidence'] * 100,
+                mode='lines+markers',
+                name='Avg Confidence Score (%)',
+                line=dict(color='#6366F1', width=2.5),
+                yaxis='y2',
+            )
+        )
+    fig.update_layout(
+        title='Abstention Telemetry: Insufficient Data Share & Confidence',
+        xaxis=dict(title='Injected Data Missingness (%)', ticksuffix='%'),
+        yaxis=dict(title='Insufficient Data Share (%)', range=[0, 100]),
+        yaxis2=dict(title='Avg Confidence (%)', overlaying='y', side='right', range=[0, 100]),
+        margin=dict(l=40, r=40, t=40, b=40),
+        height=320,
+        template='plotly_white',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+    )
+    return fig
+
 
 
 def create_multiseed_box_plot(detailed_df: pd.DataFrame) -> go.Figure:

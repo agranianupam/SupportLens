@@ -205,7 +205,7 @@ class RulesEngine:
             mitigating_rules.append({'id': 'M3', 'category': 'Mitigating', 'description': 'Low data confidence: capped at Monitor with recommendation for records check', 'points': 0})
             base_level = 'Monitor'
             needs_manual_check = True
-        if features.get('att_insufficient') and features.get('quiz_insufficient'):
+        if features.get('att_all_missing') or features.get('att_valid_count') == 0 or (features.get('att_insufficient') and features.get('quiz_insufficient')):
             base_level = 'Insufficient Data'
             needs_manual_check = True
 

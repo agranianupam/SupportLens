@@ -1,9 +1,14 @@
 import streamlit as st
 import pandas as pd
 from app.components.guardrails import render_guardrails_banner, render_footer
-from app.components.charts import create_subgroup_fairness_chart, create_missing_stress_chart
+from app.components.charts import (
+    create_subgroup_fairness_chart,
+    create_missing_stress_chart,
+    create_insufficient_data_growth_chart,
+)
 from app.data_loader import load_raw_data, get_cohort_snapshot
-from src.fairness import audit_subgroup_fairness, missing_data_stress_test
+from src.fairness import audit_subgroup_fairness
+from src.evaluation import missingness_stress_test
 st.set_page_config(page_title='Fairness & Limitations - SupportLens', page_icon='⚖️', layout='wide')
 render_guardrails_banner()
 st.title('⚖️ Algorithmic Fairness, Missing Data & System Limitations')
@@ -28,17 +33,35 @@ st.info(f"""#### 💡 Case Study: The Part-Time Student Disparity & Our Mitigati
 - **The Naïve Risk:** A simplistic 'Attendance < 75%' rule would unfairly over-flag part-time students, creating an observed baseline disparity of {audit_res['demographic_parity_gap_pct']:.1f} percentage points.
 - **SupportLens Mitigation:** Through **Mitigating Rule M1** (strong quiz performance offsets attendance penalties) and requiring multi-signal convergence, SupportLens successfully dampens unwarranted alerts, bringing parity metrics within the fair target window (<10%).""")
 st.markdown('### 2. Missing-Data Stress Testing & Resilience')
-st.markdown('To test resilience under deteriorating data recording environments, we simulate escalating levels of injected synthetic missingness (5%, 10%, 20%, 30%):')
+st.markdown('To test resilience under deteriorating data recording environments, we simulate escalating levels of injected synthetic missingness (5%, 10%, 20%, 30%) across multiple random seeds:')
+
+@st.cache_data
+def get_cached_stress_test():
+    return missingness_stress_test(
+        weekly_df=cleaned_weekly,
+        students_df=students_df,
+        labels_df=ground_truth,
+        as_of_week=10,
+        levels=[0.05, 0.10, 0.20, 0.30],
+        seeds=3,
+    )
+
 with st.spinner('Executing missing-data stress simulation...'):
-    stress_df = missing_data_stress_test(weekly_df=cleaned_weekly, students_df=students_df, labels_df=ground_truth, as_of_week=10)
-st_col1, st_col2 = st.columns([1.5, 1])
+    stress_res = get_cached_stress_test()
+    stress_df = stress_res['stress_df']
+    stress_takeaway = stress_res['takeaway']
+
+st_col1, st_col2 = st.columns(2)
 with st_col1:
     fig_stress = create_missing_stress_chart(stress_df)
     st.plotly_chart(fig_stress, use_container_width=True)
 with st_col2:
-    st.markdown('**Data Confidence & Abstention Telemetry:**')
-    st.dataframe(stress_df[['added_missingness_pct', 'high_confidence_count', 'medium_confidence_count', 'low_confidence_count', 'insufficient_data_count', 'manual_check_recommended_count']], use_container_width=True)
-    st.caption("As data sparseness increases, the system safely abstains from aggressive flagging and instead issues gentle 'Needs manual check' advisories.")
+    fig_insuff = create_insufficient_data_growth_chart(stress_df)
+    st.plotly_chart(fig_insuff, use_container_width=True)
+
+st.markdown('**Stress Test Performance & Telemetry Table:**')
+st.dataframe(stress_df, use_container_width=True, hide_index=True)
+st.success(f"🛡️ **Empirical Takeaway:** {stress_takeaway}")
 st.markdown('---')
 st.markdown('### 3. System Boundaries & Governance Charter')
 lim_col1, lim_col2 = st.columns(2)
