@@ -132,6 +132,48 @@ class ReviewStore:
         self.log_audit_event(actor_code='SYSTEM_ENGINE', event_type='FLAG_EVALUATED', student_id=student_id, flag_id=flag_id, details={'support_level': support_level, 'score': score, 'as_of_week': as_of_week})
         return flag_id
 
+    def save_flags_batch(self, flag_results: List[Dict[str, Any]], as_of_week: int) -> Dict[str, int]:
+        """
+        Saves or updates cohort flags in a single SQLite transaction.
+        Avoids 100 individual connections and queries during snapshot generation.
+        """
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        flag_ids = {}
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT flag_id, student_id, support_level, score FROM flags WHERE as_of_week = ?', (as_of_week,))
+            existing = {r['student_id']: dict(r) for r in cursor.fetchall()}
+
+            for r in flag_results:
+                s_id = r['student_id']
+                support_level = r['support_level']
+                score = r['score']
+                ex = existing.get(s_id)
+                if ex and ex['support_level'] == support_level and ex['score'] == score:
+                    flag_ids[s_id] = ex['flag_id']
+                else:
+                    categories = json.dumps(r.get('categories', []))
+                    expl_payload = {
+                        'summary': r.get('explanation', {}).get('summary', '') if isinstance(r.get('explanation'), dict) else '',
+                        'fired_rules': [rule['id'] if isinstance(rule, dict) else rule for rule in r.get('fired_rules', [])],
+                    }
+                    cursor.execute('''
+                        INSERT INTO flags (student_id, as_of_week, support_level, score, categories, explanation_json, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(student_id, as_of_week) DO UPDATE SET
+                            support_level=excluded.support_level,
+                            score=excluded.score,
+                            categories=excluded.categories,
+                            explanation_json=excluded.explanation_json
+                    ''', (s_id, as_of_week, support_level, score, categories, json.dumps(expl_payload), now))
+            conn.commit()
+
+            cursor.execute('SELECT flag_id, student_id FROM flags WHERE as_of_week = ?', (as_of_week,))
+            for r in cursor.fetchall():
+                flag_ids[r['student_id']] = r['flag_id']
+
+        return flag_ids
+
     def record_review(self, flag_id: int, student_id: str, reviewer_code: str, decision: str, corrected_level: Optional[str]=None, reason_code: Optional[str]=None, reason_note: Optional[str]=None) -> int:
         reviewer_code = reviewer_code.strip()
         if not re.match(r'^(STAFF-\d+|COORDINATOR-\d+|STAFF-DEMO)$', reviewer_code, re.IGNORECASE):
@@ -210,6 +252,73 @@ class ReviewStore:
             return {'display_level': 'On Track', 'is_reviewed': True, 'review_decision': f"Dismissed ({review.get('reason_code', 'False Positive')})", 'override_applied': True, 'review': review}
         else:
             return {'display_level': system_level, 'is_reviewed': True, 'review_decision': 'Deferred: Monitoring', 'override_applied': False, 'review': review}
+
+    def get_all_effective_student_statuses(self, as_of_week: int, system_levels: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
+        """
+        Consolidates student review lookups into a single query to eliminate N+1 database queries.
+        Returns a mapping: student_id -> status_dict
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT r.*, f.support_level as system_level, f.score as system_score
+                FROM reviews r
+                JOIN flags f ON r.flag_id = f.flag_id
+                WHERE f.as_of_week = ?
+                ORDER BY r.review_id ASC
+            ''', (as_of_week,))
+            rows = cursor.fetchall()
+
+        latest_reviews = {}
+        for row in rows:
+            latest_reviews[row['student_id']] = dict(row)
+
+        effective_statuses = {}
+        for student_id, system_level in system_levels.items():
+            review = latest_reviews.get(student_id)
+            if not review:
+                effective_statuses[student_id] = {
+                    'display_level': system_level,
+                    'is_reviewed': False,
+                    'review_decision': 'Pending Review',
+                    'override_applied': False,
+                    'review': None,
+                }
+            else:
+                decision = review['decision']
+                if decision == 'Confirmed':
+                    effective_statuses[student_id] = {
+                        'display_level': system_level,
+                        'is_reviewed': True,
+                        'review_decision': 'Confirmed by Staff',
+                        'override_applied': False,
+                        'review': review,
+                    }
+                elif decision == 'Corrected':
+                    effective_statuses[student_id] = {
+                        'display_level': review['corrected_level'],
+                        'is_reviewed': True,
+                        'review_decision': f"Corrected to {review['corrected_level']}",
+                        'override_applied': True,
+                        'review': review,
+                    }
+                elif decision == 'Dismissed':
+                    effective_statuses[student_id] = {
+                        'display_level': 'On Track',
+                        'is_reviewed': True,
+                        'review_decision': f"Dismissed ({review.get('reason_code', 'False Positive')})",
+                        'override_applied': True,
+                        'review': review,
+                    }
+                else:
+                    effective_statuses[student_id] = {
+                        'display_level': system_level,
+                        'is_reviewed': True,
+                        'review_decision': 'Deferred: Monitoring',
+                        'override_applied': False,
+                        'review': review,
+                    }
+        return effective_statuses
 
     def get_student_history(self, student_id: str) -> Dict[str, Any]:
         with self._get_connection() as conn:

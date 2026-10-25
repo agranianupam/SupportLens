@@ -64,28 +64,39 @@ def get_cohort_snapshot(as_of_week: int, custom_thresholds: Dict[str, Any]=None)
     flag_results = engine.score_all_students(features_df, historical_snapshots=hist_snapshots, custom_thresholds=custom_thresholds)
     ml_preds = ml.predict(features_df)
     ml_dict = ml_preds.set_index('student_id').to_dict(orient='index')
+
+    # Batch save flags in a single transaction (avoids 100 separate queries)
+    flag_ids = store.save_flags_batch(flag_results, as_of_week)
+
+    # Batch lookup review statuses in a single query (avoids 100 separate queries)
+    system_levels = {r['student_id']: r['support_level'] for r in flag_results}
+    effective_statuses = store.get_all_effective_student_statuses(as_of_week, system_levels)
+
     cohort_records = []
+    meta_dict = students_df.set_index('student_id').to_dict(orient='index')
+    feat_dict = features_df.set_index('student_id').to_dict(orient='index')
+
     for r in flag_results:
         s_id = r['student_id']
-        f_id = store.save_flag(r)
-        r['flag_id'] = f_id
-        effective = store.get_effective_student_status(s_id, r['support_level'], as_of_week)
-        r['display_level'] = effective['display_level']
-        r['review_decision'] = effective['review_decision']
-        r['is_reviewed'] = effective['is_reviewed']
-        r['override_applied'] = effective['override_applied']
+        r['flag_id'] = flag_ids.get(s_id, 1)
+        effective = effective_statuses.get(s_id, {})
+        r['display_level'] = effective.get('display_level', r['support_level'])
+        r['review_decision'] = effective.get('review_decision', 'Pending Review')
+        r['is_reviewed'] = effective.get('is_reviewed', False)
+        r['override_applied'] = effective.get('override_applied', False)
+
         ml_info = ml_dict.get(s_id, {})
         r['ml_probability'] = ml_info.get('ml_support_probability', 0.0)
         r['ml_flag'] = ml_info.get('ml_flag', False)
         r['top_contributing_factors'] = ml_info.get('top_contributing_factors', [])
-        ag = compute_agreement(r['display_level'], r['ml_flag'])
-        r['agreement'] = ag
-        feat_row = features_df[features_df['student_id'] == s_id].iloc[0].to_dict()
+        r['agreement'] = compute_agreement(r['display_level'], r['ml_flag'])
+
+        feat_row = feat_dict.get(s_id, {})
         r['explanation'] = generate_explanation(r, feat_row)
-        cohort_records.append(r)
-    meta_dict = students_df.set_index('student_id').to_dict(orient='index')
-    for r in cohort_records:
-        m = meta_dict.get(r['student_id'], {})
+
+        m = meta_dict.get(s_id, {})
         r['cohort_group'] = m.get('cohort_group', 'Unknown')
         r['study_mode'] = m.get('study_mode', 'Unknown')
+        cohort_records.append(r)
+
     return (features_df, cohort_records)

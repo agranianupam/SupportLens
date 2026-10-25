@@ -8,7 +8,7 @@ if str(ROOT_DIR) not in sys.path:
 import streamlit as st
 import pandas as pd
 import numpy as np
-from app.components.guardrails import render_guardrails_banner, render_footer
+from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
 from app.components.charts import (
     create_multiseed_box_plot,
     create_earliness_histogram,
@@ -23,7 +23,7 @@ from src.evaluation import (
 )
 
 st.set_page_config(page_title='Evaluation - SupportLens', page_icon='🧪', layout='wide')
-render_guardrails_banner()
+apply_page_theme()
 
 st.title('🧪 System Evaluation & Benchmark Analysis')
 st.markdown(
@@ -95,17 +95,28 @@ def get_cached_multiseed_results():
     return run_multiseed_evaluation(seeds=[42, 7, 123, 2024, 99], as_of_week=10)
 
 
-multiseed_res = get_cached_multiseed_results()
-detailed_df = multiseed_res['detailed_df']
-summary_df = multiseed_res['summary_df']
+col_ms_btn, col_ms_info = st.columns([1, 3])
+with col_ms_btn:
+    trigger_multiseed = st.button("▶️ Run 5-Seed Stability Test", key="btn_run_ms", type="primary")
 
-ms_col1, ms_col2 = st.columns([1.2, 1])
-with ms_col1:
-    st.markdown('**Mean ± Std Performance Across 5 Seeds:**')
-    st.table(summary_df)
-with ms_col2:
-    fig_box = create_multiseed_box_plot(detailed_df)
-    st.plotly_chart(fig_box, use_container_width=True)
+if trigger_multiseed:
+    st.session_state['run_multiseed'] = True
+
+if st.session_state.get('run_multiseed', False):
+    with st.spinner('Running 5-seed stability simulation (seeds: 42, 7, 123, 2024, 99)...'):
+        multiseed_res = get_cached_multiseed_results()
+    detailed_df = multiseed_res['detailed_df']
+    summary_df = multiseed_res['summary_df']
+
+    ms_col1, ms_col2 = st.columns([1.2, 1])
+    with ms_col1:
+        st.markdown('**Mean ± Std Performance Across 5 Seeds:**')
+        st.table(summary_df)
+    with ms_col2:
+        fig_box = create_multiseed_box_plot(detailed_df)
+        st.plotly_chart(fig_box, use_container_width=True)
+else:
+    st.info("💡 Multi-seed evaluation tests generalisation across 5 distinct random seeds (`42, 7, 123, 2024, 99`). Click **'Run 5-Seed Stability Test'** above to execute this experiment on demand.")
 
 st.markdown('---')
 
@@ -206,4 +217,5 @@ st.info("""**Label-Circularity & Real-World Reality Check:**
 - **Optimism Warning:** In real educational deployments, student difficulties are far more chaotic and multidimensional than any synthetic generator can simulate. Measured synthetic metrics (F1 ~0.85–0.90) are likely **optimistic** compared to messy live institutional data.
 - **Evaluative Purpose:** This evaluation proves internal architectural validity, robustness across seeds, and resistance to alert fatigue—it does not claim omniscient prediction in live university courses.""")
 
+render_guardrails_banner()
 render_footer()

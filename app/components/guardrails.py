@@ -69,19 +69,30 @@ def inject_aesthetic_theme():
     """, unsafe_allow_html=True)
 
 
+def apply_page_theme():
+    """Injects global theme styles without rendering any visual banner."""
+    inject_aesthetic_theme()
+
+
 def render_guardrails_banner():
+    """
+    Renders the relocated ethical guardrail banner at the bottom of the page.
+    Compact, responsive, subtle low-contrast styling in normal document flow.
+    """
     inject_aesthetic_theme()
     st.markdown("""
-        <div style="background: linear-gradient(90deg, #ECFDF5 0%, #F0FDFA 100%); border-left: 5px solid #0D9488; border: 1px solid rgba(13, 148, 136, 0.22); border-left-width: 5px; padding: 14px 18px; border-radius: 10px; margin: 12px 0 20px 0; box-shadow: 0 4px 15px rgba(13, 148, 136, 0.06);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 1.4rem;">🛡️</span>
+        <div style="background: rgba(240, 253, 250, 0.75); border: 1px solid rgba(13, 148, 136, 0.22); border-left: 4px solid #0D9488; padding: 12px 16px; border-radius: 8px; margin: 24px 0 10px 0; box-shadow: 0 2px 10px rgba(13, 148, 136, 0.04);">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <span style="font-size: 1.15rem; line-height: 1.2;">🛡️</span>
                 <div>
-                    <strong style="color: #0F766E; font-size: 0.95rem; letter-spacing: 0.3px;">ETHICAL AI GUARDRAIL & HUMAN-IN-THE-LOOP MANDATE</strong><br/>
-                    <span style="color: #334155; font-size: 0.88rem; line-height: 1.5;">
+                    <div style="color: #0F766E; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;">
+                        Ethical AI Guardrail & Human-in-the-Loop Mandate
+                    </div>
+                    <div style="color: #475569; font-size: 0.82rem; line-height: 1.45; margin-top: 2px;">
                         This system is an early-warning supportive tool to help course coordinators offer timely academic assistance. 
-                        <strong>It never makes grades, penalties, holds, or final academic decisions.</strong> 
+                        <strong style="color: #0F172A;">It never makes grades, penalties, holds, or final academic decisions.</strong> 
                         Human review by an authorised staff member is strictly required before any supportive outreach is initiated.
-                    </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -89,11 +100,13 @@ def render_guardrails_banner():
 
 
 def render_footer():
-    st.markdown('---')
+    """
+    Renders the bottom synthetic data disclaimer.
+    """
     st.markdown("""
-        <div style="text-align: center; color: #64748B; font-size: 0.82rem; padding: 12px 0;">
-            🔒 <strong style="color: #334155;">100% Synthetic Data Demonstration</strong> • No real students, emails, or personal identifiers • 
-            <span style="color: #0D9488; font-weight: 600;">SupportLens Early-Warning Prototype</span> • For Academic Coordinator Decision Support Only
+        <div style="text-align: center; color: #64748B; font-size: 0.78rem; padding: 6px 0 16px 0;">
+            🔒 <strong style="color: #334155;">100% Synthetic Data Demonstration</strong> • Anonymised student IDs (S-0001..S-0100) • No real students or emails • 
+            <span style="color: #0D9488; font-weight: 600;">SupportLens Prototype</span> • Decision Support Only
         </div>
     """, unsafe_allow_html=True)
 

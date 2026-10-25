@@ -7,7 +7,7 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 import pandas as pd
-from app.components.guardrails import render_guardrails_banner, render_footer
+from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
 from app.components.charts import (
     create_subgroup_fairness_chart,
     create_missing_stress_chart,
@@ -17,7 +17,7 @@ from app.data_loader import load_raw_data, get_cohort_snapshot
 from src.fairness import audit_subgroup_fairness
 from src.evaluation import missingness_stress_test
 st.set_page_config(page_title='Fairness & Limitations - SupportLens', page_icon='⚖️', layout='wide')
-render_guardrails_banner()
+apply_page_theme()
 st.title('⚖️ Algorithmic Fairness, Missing Data & System Limitations')
 st.markdown('SupportLens is built around responsible AI design principles. This page provides empirical verification of subgroup fairness, stresstests missing-data resilience, and documents technical and human limitations.')
 students_df, cleaned_weekly, ground_truth, _ = load_raw_data()
@@ -53,22 +53,33 @@ def get_cached_stress_test():
         seeds=3,
     )
 
-with st.spinner('Executing missing-data stress simulation...'):
-    stress_res = get_cached_stress_test()
+col_str_btn, col_str_info = st.columns([1, 3])
+with col_str_btn:
+    trigger_stress = st.button("▶️ Run Stress Test Simulation", key="btn_run_stress", type="primary")
+
+if trigger_stress:
+    st.session_state['run_stress'] = True
+
+if st.session_state.get('run_stress', False):
+    with st.spinner('Simulating data degradation across 5% to 30% missingness levels...'):
+        stress_res = get_cached_stress_test()
     stress_df = stress_res['stress_df']
     stress_takeaway = stress_res['takeaway']
 
-st_col1, st_col2 = st.columns(2)
-with st_col1:
-    fig_stress = create_missing_stress_chart(stress_df)
-    st.plotly_chart(fig_stress, use_container_width=True)
-with st_col2:
-    fig_insuff = create_insufficient_data_growth_chart(stress_df)
-    st.plotly_chart(fig_insuff, use_container_width=True)
+    st_col1, st_col2 = st.columns(2)
+    with st_col1:
+        fig_stress = create_missing_stress_chart(stress_df)
+        st.plotly_chart(fig_stress, use_container_width=True)
+    with st_col2:
+        fig_insuff = create_insufficient_data_growth_chart(stress_df)
+        st.plotly_chart(fig_insuff, use_container_width=True)
 
-st.markdown('**Stress Test Performance & Telemetry Table:**')
-st.dataframe(stress_df, use_container_width=True, hide_index=True)
-st.success(f"🛡️ **Empirical Takeaway:** {stress_takeaway}")
+    st.markdown('**Stress Test Performance & Telemetry Table:**')
+    st.dataframe(stress_df, use_container_width=True, hide_index=True)
+    st.success(f"🛡️ **Empirical Takeaway:** {stress_takeaway}")
+else:
+    st.info("💡 Missing-data stress testing injects synthetic data corruption from 5% to 30% to demonstrate that SupportLens abstains ('Insufficient Data') rather than inventing false alarms. Click **'Run Stress Test Simulation'** above to execute this experiment on demand.")
+
 st.markdown('---')
 st.markdown('### 3. System Boundaries & Governance Charter')
 lim_col1, lim_col2 = st.columns(2)
@@ -78,4 +89,5 @@ with lim_col1:
 with lim_col2:
     st.markdown('#### 🏛️ Long-Term Governance Recommendations')
     st.markdown('\n        1. **Strictly Human-in-the-Loop:** Automated disciplinary decisions, holds, or grade impacts are technically and philosophically prohibited.\n        2. **Staff Pacing & Training:** Coordinators should be trained in supportive, non-confrontational outreach practices.\n        3. **Student Transparency:** Students should be informed that supportive early-warning systems operate in the course, with a clear appeal and opt-out pathway.\n        4. **Mid-Term Calibration Audits:** Review coordinator dismissal feedback at Week 6 each semester to refine rules.\n        ')
+render_guardrails_banner()
 render_footer()

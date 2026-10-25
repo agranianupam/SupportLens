@@ -7,11 +7,11 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 import pandas as pd
-from app.components.guardrails import render_guardrails_banner, render_footer
+from app.components.guardrails import apply_page_theme, render_guardrails_banner, render_footer
 from app.components.badges import support_level_badge, confidence_badge, agreement_badge, review_status_badge
 from app.data_loader import load_raw_data, get_cohort_snapshot, get_review_store
 st.set_page_config(page_title='Review Queue - SupportLens', page_icon='📋', layout='wide')
-render_guardrails_banner()
+apply_page_theme()
 st.title('📋 Coordinator Review Queue & Action Tracker')
 st.markdown('Prioritised action queue to ensure coordinator time is directed where supportive outreach is most urgently needed. Flags are prioritized by urgency, rule-vs-ML disagreements, and low data confidence.')
 as_of_week = st.sidebar.slider('📅 Snapshot Week', min_value=4, max_value=12, value=10, step=1)
@@ -208,4 +208,5 @@ with tab_analytics:
     else:
         st.info('No staff reviews recorded yet. Triage flagged students to generate feedback analytics.')
 
+render_guardrails_banner()
 render_footer()
