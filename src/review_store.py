@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Optional
 import sqlite3
 import json
 import datetime
+import re
 from pathlib import Path
 DB_PATH = Path('db/supportlens.db')
 VALID_DECISIONS = {'Confirmed', 'Corrected', 'Dismissed', 'Deferred'}
@@ -40,6 +41,20 @@ class ReviewStore:
                 recorded_at TEXT NOT NULL,
                 FOREIGN KEY(action_id) REFERENCES actions(action_id)
             )
+            ''')
+            cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS trg_prevent_audit_update
+            BEFORE UPDATE ON audit_log
+            BEGIN
+                SELECT RAISE(ABORT, 'GUARDRAIL VIOLATION: audit_log is strictly append-only; UPDATE is prohibited.');
+            END;
+            ''')
+            cursor.execute('''
+            CREATE TRIGGER IF NOT EXISTS trg_prevent_audit_delete
+            BEFORE DELETE ON audit_log
+            BEGIN
+                SELECT RAISE(ABORT, 'GUARDRAIL VIOLATION: audit_log is strictly append-only; DELETE is prohibited.');
+            END;
             ''')
             conn.commit()
 
@@ -102,6 +117,9 @@ class ReviewStore:
         return flag_id
 
     def record_review(self, flag_id: int, student_id: str, reviewer_code: str, decision: str, corrected_level: Optional[str]=None, reason_code: Optional[str]=None, reason_note: Optional[str]=None) -> int:
+        reviewer_code = reviewer_code.strip()
+        if not re.match(r'^(STAFF-\d+|COORDINATOR-\d+|STAFF-DEMO)$', reviewer_code, re.IGNORECASE):
+            raise ValueError(f"Reviewer code must be an anonymised staff identifier (e.g. 'STAFF-01'), got '{reviewer_code}'.")
         if decision not in VALID_DECISIONS:
             raise ValueError(f"Invalid review decision '{decision}'. Allowed: {VALID_DECISIONS}")
         if decision.lower() in PROHIBITED_DECISIONS:
@@ -124,6 +142,9 @@ class ReviewStore:
         return review_id
 
     def record_action(self, student_id: str, action_type: str, reviewer_code: str, flag_id: Optional[int]=None, action_note: str='', planned_date: Optional[str]=None, status: str='Planned') -> int:
+        reviewer_code = reviewer_code.strip()
+        if not re.match(r'^(STAFF-\d+|COORDINATOR-\d+|STAFF-DEMO)$', reviewer_code, re.IGNORECASE):
+            raise ValueError(f"Reviewer code must be an anonymised staff identifier (e.g. 'STAFF-01'), got '{reviewer_code}'.")
         if status not in VALID_ACTION_STATUSES:
             raise ValueError(f"Invalid status '{status}'. Allowed: {VALID_ACTION_STATUSES}")
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -136,6 +157,9 @@ class ReviewStore:
         return action_id
 
     def update_action_status(self, action_id: int, new_status: str, actor_code: str):
+        actor_code = actor_code.strip()
+        if not re.match(r'^(STAFF-\d+|COORDINATOR-\d+|STAFF-DEMO)$', actor_code, re.IGNORECASE):
+            raise ValueError(f"Actor code must be an anonymised staff identifier (e.g. 'STAFF-01'), got '{actor_code}'.")
         if new_status not in VALID_ACTION_STATUSES:
             raise ValueError(f"Invalid status '{new_status}'")
         with self._get_connection() as conn:
@@ -351,12 +375,15 @@ class ReviewStore:
         }
 
     def record_action_feedback(
-    self,
-    action_id: int,
-    outcome: str,
-    staff_note: str = "",
-    recorded_by: str = "STAFF-01",
+        self,
+        action_id: int,
+        outcome: str,
+        staff_note: str = "",
+        recorded_by: str = "STAFF-01",
     ):
+        recorded_by = recorded_by.strip()
+        if not re.match(r'^(STAFF-\d+|COORDINATOR-\d+|STAFF-DEMO)$', recorded_by, re.IGNORECASE):
+            raise ValueError(f"Reviewer code must be an anonymised staff identifier (e.g. 'STAFF-01'), got '{recorded_by}'.")
         valid_outcomes = {
             "Helpful",
             "Partially helpful",
